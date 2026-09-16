@@ -305,7 +305,7 @@ spec:
         - name: gitea-registry
       containers:
         - name: frontend
-          image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:d809bed
+          image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:d960fd5
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
