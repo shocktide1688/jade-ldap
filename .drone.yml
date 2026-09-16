@@ -1,0 +1,44 @@
+kind: pipeline
+type: docker
+name: jade-ldap-ci
+
+steps:
+  - name: backend-tests
+    image: docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21
+    commands:
+      - mvn -f backend/pom.xml -B -pl jade-ldap -am test
+
+  - name: frontend-quality
+    image: docker.m.daocloud.io/library/node:22-bookworm-slim
+    commands:
+      - cd frontend
+      - npm ci --registry=https://registry.npmmirror.com
+      - npm run type-check
+      - npm run build
+
+  - name: build-native-server
+    image: docker.m.daocloud.io/library/docker:27-cli
+    environment:
+      DOCKER_HOST: tcp://172.17.0.1:2375
+      REGISTRY_USERNAME:
+        from_secret: registry_username
+      REGISTRY_PASSWORD:
+        from_secret: registry_password
+    commands:
+      - 'echo "$REGISTRY_PASSWORD" | docker login 192.168.199.224:30030 --username "$REGISTRY_USERNAME" --password-stdin'
+      - 'docker build -f Dockerfile.ldap -t "192.168.199.224:30030/reqpilot-admin/jade-ldap-server:$DRONE_COMMIT_SHA" .'
+      - 'docker push "192.168.199.224:30030/reqpilot-admin/jade-ldap-server:$DRONE_COMMIT_SHA"'
+    depends_on:
+      - backend-tests
+
+trigger:
+  branch:
+    - main
+  event:
+    - push
+    - custom
+  paths:
+    exclude:
+      - deploy/**
+  instance:
+    - 192.168.199.224:30080
