@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import request from '@/utils/request'
 
+
+defineOptions({ name: 'MonitorOperLog' })
 const loading = ref(false)
 const list = ref<any[]>([])
 const page = ref(1)
@@ -29,7 +31,7 @@ onMounted(fetchData)
   <el-card>
     <div class="toolbar">
       <el-input v-model="username" placeholder="搜索用户" clearable style="width: 240px;" @keyup.enter="fetchData" />
-      <el-button type="primary" @click="fetchData" style="background: #00a86b; border-color: #00a86b;">搜索</el-button>
+      <el-button type="primary" @click="fetchData">搜索</el-button>
     </div>
     <el-table v-loading="loading" :data="list" stripe>
       <el-table-column prop="title" label="模块" width="120" />

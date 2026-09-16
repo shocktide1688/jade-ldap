@@ -1,92 +1,109 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { setupGuards } from './guards'
 
+// 静态导入：页面组件都很小（几 KB），合并进主包；也避免懒加载 chunk 在切页时的加载时序问题
+import LoginPage from '@/pages/login/index.vue'
+import DefaultLayout from '@/layouts/DefaultLayout.vue'
+import DashboardPage from '@/pages/dashboard/index.vue'
+import LdapPage from '@/pages/ldap/index.vue'
+import UserPage from '@/pages/system/user.vue'
+import RolePage from '@/pages/system/role.vue'
+import MenuPage from '@/pages/system/menu.vue'
+import DeptPage from '@/pages/system/dept.vue'
+import DictPage from '@/pages/system/dict.vue'
+import NoticePage from '@/pages/system/notice.vue'
+import OperLogPage from '@/pages/monitor/operlog.vue'
+import LoginLogPage from '@/pages/monitor/loginlog.vue'
+import ProfilePage from '@/pages/profile/index.vue'
+import DemoPlatformPage from '@/pages/demo/platform.vue'
+import NotFoundPage from '@/pages/error/404.vue'
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/pages/login/index.vue'),
+    component: LoginPage,
     meta: { layout: 'blank', title: '登录' },
   },
   {
     path: '/',
-    component: () => import('@/layouts/DefaultLayout.vue'),
+    component: DefaultLayout,
     redirect: '/dashboard',
     children: [
       {
         path: 'dashboard',
         name: 'Dashboard',
-        component: () => import('@/pages/dashboard/index.vue'),
+        component: DashboardPage,
         meta: { title: '首页', icon: 'House' },
       },
       {
         path: 'ldap',
         name: 'LdapDirectory',
-        component: () => import('@/pages/ldap/index.vue'),
+        component: LdapPage,
         meta: { title: 'LDAP 目录', icon: 'Connection' },
       },
       // ===== 系统管理 =====
       {
         path: 'system/user',
         name: 'SystemUser',
-        component: () => import('@/pages/system/user.vue'),
+        component: UserPage,
         meta: { title: '用户管理', icon: 'User' },
       },
       {
         path: 'system/role',
         name: 'SystemRole',
-        component: () => import('@/pages/system/role.vue'),
+        component: RolePage,
         meta: { title: '角色管理', icon: 'UserFilled' },
       },
       {
         path: 'system/menu',
         name: 'SystemMenu',
-        component: () => import('@/pages/system/menu.vue'),
+        component: MenuPage,
         meta: { title: '菜单管理', icon: 'Menu' },
       },
       {
         path: 'system/dept',
         name: 'SystemDept',
-        component: () => import('@/pages/system/dept.vue'),
+        component: DeptPage,
         meta: { title: '部门管理', icon: 'OfficeBuilding' },
       },
       {
         path: 'system/dict',
         name: 'SystemDict',
-        component: () => import('@/pages/system/dict.vue'),
+        component: DictPage,
         meta: { title: '字典管理', icon: 'Reading' },
       },
       {
         path: 'system/notice',
         name: 'SystemNotice',
-        component: () => import('@/pages/system/notice.vue'),
+        component: NoticePage,
         meta: { title: '通知公告', icon: 'Bell' },
       },
       // ===== 系统监控 =====
       {
         path: 'monitor/operlog',
         name: 'MonitorOperLog',
-        component: () => import('@/pages/monitor/operlog.vue'),
+        component: OperLogPage,
         meta: { title: '操作日志', icon: 'Document' },
       },
       {
         path: 'monitor/loginlog',
         name: 'MonitorLoginLog',
-        component: () => import('@/pages/monitor/loginlog.vue'),
+        component: LoginLogPage,
         meta: { title: '登录日志', icon: 'Key' },
       },
       // ===== 个人中心 =====
       {
         path: 'profile',
         name: 'Profile',
-        component: () => import('@/pages/profile/index.vue'),
+        component: ProfilePage,
         meta: { title: '个人中心', icon: 'UserFilled', hidden: true },
       },
       // ===== 平台演示 =====
       {
         path: 'demo/platform',
         name: 'DemoPlatform',
-        component: () => import('@/pages/demo/platform.vue'),
+        component: DemoPlatformPage,
         meta: { title: '平台能力展示', icon: 'MagicStick' },
       },
     ],
@@ -94,7 +111,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('@/pages/error/404.vue'),
+    component: NotFoundPage,
     meta: { layout: 'blank', title: '404' },
   },
 ]

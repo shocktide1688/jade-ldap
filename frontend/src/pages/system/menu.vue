@@ -3,6 +3,8 @@ import { onMounted, reactive, ref } from 'vue'
 import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+
+defineOptions({ name: 'SystemMenu' })
 const TYPE_LABELS: Record<string, string> = { M: '目录', C: '菜单', F: '按钮' }
 const TYPE_TAGS: Record<string, 'info' | 'success' | 'warning' | 'primary' | 'danger'> = {
   M: 'info', C: 'success', F: 'warning',
@@ -150,7 +152,7 @@ onMounted(fetchData)
     </el-form>
     <template #footer>
       <el-button @click="showEdit = false">取消</el-button>
-      <el-button type="primary" @click="save" style="background: #00a86b; border-color: #00a86b;">保存</el-button>
+      <el-button type="primary" @click="save">保存</el-button>
     </template>
   </el-dialog>
 </template>

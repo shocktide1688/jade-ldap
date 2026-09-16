@@ -3,6 +3,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
+
+defineOptions({ name: 'LdapDirectory' })
 interface DirectoryUser { dn: string; uid: string; commonName: string; surname: string; email?: string }
 interface DirectoryGroup { dn: string; name: string; description?: string; members: string[] }
 interface ServerStatus { running: boolean; ldapPort: number; ldapsPort: number; tlsEnabled: boolean; startTlsEnabled: boolean; baseDn: string; entries: number; persistenceHealthy: boolean }
@@ -272,8 +274,8 @@ onMounted(loadAll)
 .ldap-page { max-width: 1480px; margin: 0 auto; }
 .hero { display: flex; justify-content: space-between; align-items: center; padding: 30px 34px; margin-bottom: 16px; border-radius: 16px; color: white; background: radial-gradient(circle at 85% 20%, #36d39955, transparent 30%), linear-gradient(120deg, #071d18, #123f34); }
 .hero h1 { margin: 5px 0 8px; font-size: 30px; }.hero p { margin: 0; color: #b8d8cf; }.eyebrow { color: #5ee6b2; font-size: 12px; letter-spacing: 2px; }
-.status-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 16px; }.status-grid :deep(.el-card__body) { display: flex; flex-direction: column; gap: 10px; }.status-grid span { color: #7a8582; font-size: 13px; }.status-grid strong { font-size: 20px; }.status-grid .mono { font-size: 15px; }.ok { color: #00a86b; }.bad { color: #e24c4b; }
-.workspace { border-radius: 12px; }.toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }code { color: #48625b; font-size: 12px; }.tree-node { display: flex; gap: 10px; align-items: center; }.tree-node code { margin-left: 8px; color: #84938f; }
+.status-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 16px; }.status-grid :deep(.el-card__body) { display: flex; flex-direction: column; gap: 10px; }.status-grid span { color: var(--jade-text-secondary); font-size: 13px; }.status-grid strong { font-size: 20px; }.status-grid .mono { font-size: 15px; }.ok { color: var(--jade-primary); }.bad { color: #f87171; }
+.workspace { border-radius: 12px; }.toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }code { color: var(--jade-primary-light); font-size: 12px; }.tree-node { display: flex; gap: 10px; align-items: center; }.tree-node code { margin-left: 8px; color: var(--jade-text-secondary); }
 .audit-filters { display: grid; grid-template-columns: minmax(240px, 1fr) 150px minmax(360px, 1.4fr) auto; gap: 12px; margin-bottom: 14px; }.audit-filters + .el-table { margin-bottom: 14px; }
 @media (max-width: 900px) { .status-grid { grid-template-columns: repeat(2, 1fr); }.hero { align-items: flex-start; gap: 16px; } }
 </style>

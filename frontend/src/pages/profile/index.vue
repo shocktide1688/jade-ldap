@@ -4,6 +4,8 @@ import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
+
+defineOptions({ name: 'Profile' })
 const userStore = useUserStore()
 const profile = reactive<any>({ id: null, username: '', nickname: '', email: '', phone: '', status: 1, tenantId: null, createdAt: '' })
 const pwdForm = reactive({ old: '', new: '' })
@@ -71,7 +73,7 @@ onMounted(load)
             <el-input v-model="profile.createdAt" disabled />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="saving" @click="saveProfile" style="background: #00a86b; border-color: #00a86b;">保存</el-button>
+            <el-button type="primary" :loading="saving" @click="saveProfile">保存</el-button>
           </el-form-item>
         </el-form>
       </el-card>

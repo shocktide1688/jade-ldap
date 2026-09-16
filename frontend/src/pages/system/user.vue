@@ -3,6 +3,8 @@ import { onMounted, reactive, ref } from 'vue'
 import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+
+defineOptions({ name: 'SystemUser' })
 const loading = ref(false)
 const list = ref<any[]>([])
 const total = ref(0)
@@ -88,7 +90,7 @@ onMounted(fetchData)
   <el-card>
     <div class="toolbar">
       <el-input v-model="keyword" placeholder="搜索用户名/昵称" clearable style="width: 240px;" @keyup.enter="fetchData" />
-      <el-button type="primary" @click="fetchData" style="background: #00a86b; border-color: #00a86b;">搜索</el-button>
+      <el-button type="primary" @click="fetchData">搜索</el-button>
       <el-button type="success" @click="openCreate" plain>+ 新建</el-button>
     </div>
 
@@ -148,7 +150,7 @@ onMounted(fetchData)
     </el-form>
     <template #footer>
       <el-button @click="showEdit = false">取消</el-button>
-      <el-button type="primary" @click="save" style="background: #00a86b; border-color: #00a86b;">保存</el-button>
+      <el-button type="primary" @click="save">保存</el-button>
     </template>
   </el-dialog>
 
@@ -158,7 +160,7 @@ onMounted(fetchData)
     <el-input v-model="newPassword" type="password" show-password placeholder="新密码" />
     <template #footer>
       <el-button @click="showResetPwd = false">取消</el-button>
-      <el-button type="primary" @click="doResetPwd" style="background: #00a86b; border-color: #00a86b;">确定</el-button>
+      <el-button type="primary" @click="doResetPwd">确定</el-button>
     </template>
   </el-dialog>
 </template>

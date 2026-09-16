@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import request from '@/utils/request'
 
+
+defineOptions({ name: 'MonitorLoginLog' })
 const loading = ref(false)
 const list = ref<any[]>([])
 const page = ref(1)

@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import request from '@/utils/request'
 
+
+defineOptions({ name: 'SystemDict' })
 const loading = ref(false)
 const list = ref<any[]>([])
 const items = ref<any[]>([])

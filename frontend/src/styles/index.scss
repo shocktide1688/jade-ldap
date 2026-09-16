@@ -1,32 +1,327 @@
-/* Jade Platform 全局样式 */
+/* ============================================================
+   Jade Platform · 科技感暗色主题
+   深空底色 + 玉绿霓虹 + 玻璃拟态 + 数据动效
+   ============================================================ */
 
 :root {
-  --jade-primary: #00a86b;
-  --jade-primary-light: #4cd393;
-  --jade-primary-dark: #008553;
-  --jade-bg: #f5f7fa;
-  --jade-text: #303133;
-  --jade-text-secondary: #909399;
+  /* 品牌色：暗底上的霓虹玉绿（保证 4.5:1 对比度） */
+  --jade-primary: #00e08a;
+  --jade-primary-light: #4dffb0;
+  --jade-primary-dark: #00b871;
+  --jade-cyan: #22d3ee;
+  --jade-violet: #8b5cf6;
+
+  /* 表面层 */
+  --jade-bg: #070b14;
+  --jade-bg-soft: #0b1120;
+  --jade-card: rgba(17, 26, 44, 0.72);
+  --jade-card-solid: #111a2c;
+  --jade-border: rgba(148, 163, 184, 0.14);
+  --jade-border-light: rgba(148, 163, 184, 0.08);
+
+  /* 文字 */
+  --jade-text: #e6edf7;
+  --jade-text-secondary: #9aa5ba;
+  --jade-text-dim: #7d8aa5;
+
+  /* 发光 */
+  --jade-glow: rgba(0, 224, 138, 0.35);
+  --jade-glow-soft: rgba(0, 224, 138, 0.15);
+
+  /* 等宽数据字体（数字 / 指标 / 代码） */
+  --jade-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code',
+    ui-monospace, Menlo, Consolas, monospace;
+}
+
+html.dark {
+  /* Element Plus 暗色变量 → 玉绿主题 */
+  --el-color-primary: var(--jade-primary);
+  --el-bg-color: var(--jade-bg-soft);
+  --el-bg-color-overlay: #131d31;
+  --el-text-color-primary: var(--jade-text);
+  --el-text-color-regular: var(--jade-text);
+  --el-text-color-secondary: var(--jade-text-secondary);
+  --el-border-color: var(--jade-border);
+  --el-border-color-light: var(--jade-border);
+  --el-border-color-lighter: var(--jade-border-light);
+  --el-fill-color-blank: transparent;
+  --el-fill-color-light: rgba(148, 163, 184, 0.08);
+  --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-family: var(--el-font-family);
   background: var(--jade-bg);
   color: var(--jade-text);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Element Plus 主题色覆盖 */
+::selection {
+  background: rgba(0, 224, 138, 0.3);
+  color: #fff;
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 224, 138, 0.45); }
+
+/* ============================================================
+   玻璃拟态卡片（全站 el-card 统一升级）
+   ============================================================ */
+.el-card {
+  background: var(--jade-card);
+  border: 1px solid var(--jade-border);
+  border-radius: 14px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  /* 顶部一线高光，模拟光源 */
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.el-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  pointer-events: none;
+}
+
+.el-card:hover {
+  border-color: rgba(0, 224, 138, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 24px var(--jade-glow-soft);
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--jade-border-light);
+  color: var(--jade-text);
+  font-weight: 600;
+}
+
+/* ---------- 表格 ---------- */
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(148, 163, 184, 0.06);
+  --el-table-header-text-color: var(--jade-text-secondary);
+  --el-table-row-hover-bg-color: rgba(0, 224, 138, 0.06);
+  --el-table-border-color: var(--jade-border-light);
+  background: transparent;
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+/* ---------- 对话框 / 消息框 ---------- */
+.el-dialog, .el-message-box {
+  background: var(--jade-card-solid);
+  border: 1px solid var(--jade-border);
+  border-radius: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+
+.el-dialog__title, .el-message-box__title { color: var(--jade-text); }
+
+/* ---------- 输入框 ---------- */
+.el-input__wrapper, .el-textarea__inner {
+  background: rgba(148, 163, 184, 0.06);
+  box-shadow: 0 0 0 1px var(--jade-border) inset;
+  transition: box-shadow 0.2s ease;
+}
+
+.el-input__wrapper:hover { box-shadow: 0 0 0 1px rgba(0, 224, 138, 0.4) inset; }
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--jade-primary) inset, 0 0 16px var(--jade-glow-soft) !important;
+}
+
+/* ---------- 按钮 ---------- */
 .el-button--primary {
-  --el-button-bg-color: var(--jade-primary);
-  --el-button-border-color: var(--jade-primary);
-  --el-button-hover-bg-color: var(--jade-primary-light);
-  --el-button-hover-border-color: var(--jade-primary-light);
-  --el-button-active-bg-color: var(--jade-primary-dark);
-  --el-button-active-border-color: var(--jade-primary-dark);
+  --el-button-bg-color: transparent;
+  --el-button-border-color: transparent;
+  --el-button-hover-bg-color: transparent;
+  --el-button-hover-border-color: transparent;
+  --el-button-active-bg-color: transparent;
+  --el-button-active-border-color: transparent;
+  --el-button-text-color: #04120b;
+  --el-button-hover-text-color: #04120b;
+  background-image: linear-gradient(135deg, #00e08a, #00c4a0 55%, #22d3ee);
+  background-size: 160% 160%;
+  box-shadow: 0 4px 20px var(--jade-glow);
+  transition: background-position 0.35s ease, box-shadow 0.25s ease, transform 0.15s ease;
 }
 
-.el-link.el-link--primary {
-  --el-link-text-color: var(--jade-primary);
-  --el-link-hover-text-color: var(--jade-primary-light);
+.el-button--primary:hover,
+.el-button--primary:focus {
+  background-position: 90% 50%;
+  box-shadow: 0 6px 28px rgba(0, 224, 138, 0.5);
+}
+
+.el-button--primary:active { transform: translateY(1px) scale(0.99); }
+
+.el-button--primary.is-link,
+.el-button--primary.is-text,
+.el-button.is-link {
+  background-image: none;
+  box-shadow: none;
+  --el-button-text-color: var(--jade-primary);
+  --el-button-hover-text-color: var(--jade-primary-light);
+}
+
+.el-button.is-text { background-image: none; box-shadow: none; }
+
+.el-button--default {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: var(--jade-border);
+  color: var(--jade-text);
+}
+.el-button--default:hover {
+  border-color: rgba(0, 224, 138, 0.45);
+  color: var(--jade-primary-light);
+  background: rgba(0, 224, 138, 0.08);
+}
+
+/* ---------- 标签 / 分页 / 面包屑 ---------- */
+.el-tag {
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+}
+
+.el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-button-disabled-bg-color: transparent;
+}
+
+.el-breadcrumb__inner { color: var(--jade-text-secondary) !important; }
+.el-breadcrumb__inner a { color: var(--jade-text-dim) !important; }
+.el-breadcrumb__inner a:hover { color: var(--jade-primary) !important; }
+
+/* ---------- 下拉 / 弹层 ---------- */
+.el-popper.is-light {
+  background: var(--jade-card-solid);
+  border: 1px solid var(--jade-border);
+}
+.el-popper.is-light .el-popper__arrow::before {
+  background: var(--jade-card-solid);
+  border-color: var(--jade-border);
+}
+.el-dropdown-menu__item:not(.is-disabled):hover,
+.el-select-dropdown__item.is-hovering {
+  background: rgba(0, 224, 138, 0.08);
+  color: var(--jade-primary-light);
+}
+
+/* ============================================================
+   科技感工具类
+   ============================================================ */
+
+/* 霓虹渐变文字 */
+.neon-text {
+  background: linear-gradient(120deg, #00e08a 10%, #22d3ee 55%, #8b5cf6 95%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: neon-flow 6s linear infinite;
+}
+
+@keyframes neon-flow {
+  to { background-position: 200% center; }
+}
+
+/* 等宽数据字体 */
+.mono { font-family: var(--jade-mono); font-variant-numeric: tabular-nums; }
+
+/* 网格背景（科技坐标系） */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* 极光光斑（配合 .aurora > i 使用，GPU 友好：只动 transform/opacity） */
+.aurora { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.aurora i {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  will-change: transform;
+}
+.aurora i:nth-child(1) {
+  width: 480px; height: 480px;
+  background: radial-gradient(circle, rgba(0, 224, 138, 0.35), transparent 70%);
+  top: -140px; left: -100px;
+  animation: drift-a 18s ease-in-out infinite alternate;
+}
+.aurora i:nth-child(2) {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.28), transparent 70%);
+  bottom: -120px; right: -80px;
+  animation: drift-b 22s ease-in-out infinite alternate;
+}
+.aurora i:nth-child(3) {
+  width: 360px; height: 360px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.22), transparent 70%);
+  top: 40%; left: 55%;
+  animation: drift-c 26s ease-in-out infinite alternate;
+}
+
+@keyframes drift-a { to { transform: translate(120px, 90px) scale(1.15); } }
+@keyframes drift-b { to { transform: translate(-100px, -70px) scale(1.1); } }
+@keyframes drift-c { to { transform: translate(-80px, 60px) scale(0.9); } }
+
+/* 脉冲呼吸点（在线状态指示） */
+.pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--jade-primary);
+  box-shadow: 0 0 8px var(--jade-glow);
+  display: inline-block;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--jade-glow); }
+  50% { opacity: 0.55; box-shadow: 0 0 16px var(--jade-glow); }
+}
+
+/* 数字滚动出现 */
+@keyframes count-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 卡片交错入场（配合 style="--d: <n>ms" 使用） */
+.stagger-in {
+  opacity: 0;
+  animation: count-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--d, 0ms);
+}
+
+/* （路由切换过渡已移除：Transition+KeepAlive+RouterView 在 vue-router 5 下有已知崩溃问题，
+   多标签切换以瞬时响应优先；页面内元素仍保留 stagger-in 入场动画） */
+
+/* ============================================================
+   无障碍：尊重系统减少动态效果偏好
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .stagger-in { opacity: 1; }
 }

@@ -3,6 +3,8 @@ import { onMounted, reactive, ref } from 'vue'
 import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+
+defineOptions({ name: 'SystemRole' })
 const loading = ref(false)
 const list = ref<any[]>([])
 const showEdit = ref(false)
@@ -132,13 +134,13 @@ onMounted(fetchData)
     </el-form>
     <template #footer>
       <el-button @click="showEdit = false">取消</el-button>
-      <el-button type="primary" @click="save" style="background: #00a86b; border-color: #00a86b;">保存</el-button>
+      <el-button type="primary" @click="save">保存</el-button>
     </template>
   </el-dialog>
 
   <!-- 分配菜单 -->
   <el-dialog v-model="showAssign" :title="`分配菜单 - ${assignTarget?.roleName}`" width="540">
-    <p style="margin-top: 0; color: #909399;">勾选要给该角色分配的菜单（包含子级会自动带父级）</p>
+    <p style="margin-top: 0; color: var(--jade-text-secondary);">勾选要给该角色分配的菜单（包含子级会自动带父级）</p>
     <el-tree
       ref="treeRef"
       :data="tree"
@@ -150,7 +152,7 @@ onMounted(fetchData)
     />
     <template #footer>
       <el-button @click="showAssign = false">取消</el-button>
-      <el-button type="primary" @click="doAssign" style="background: #00a86b; border-color: #00a86b;">保存分配</el-button>
+      <el-button type="primary" @click="doAssign">保存分配</el-button>
     </template>
   </el-dialog>
 </template>

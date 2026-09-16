@@ -3,6 +3,8 @@ import { onMounted, reactive, ref } from 'vue'
 import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+
+defineOptions({ name: 'SystemNotice' })
 const loading = ref(false)
 const list = ref<any[]>([])
 const showEdit = ref(false)
@@ -61,7 +63,7 @@ onMounted(fetchData)
   <el-card>
     <div class="toolbar">
       <el-input v-model="title" placeholder="搜索标题" clearable style="width: 240px;" @keyup.enter="fetchData" />
-      <el-button type="primary" @click="fetchData" style="background: #00a86b; border-color: #00a86b;">搜索</el-button>
+      <el-button type="primary" @click="fetchData">搜索</el-button>
       <el-button type="success" @click="openCreate" plain>+ 发布公告</el-button>
     </div>
 
@@ -120,7 +122,7 @@ onMounted(fetchData)
     </el-form>
     <template #footer>
       <el-button @click="showEdit = false">取消</el-button>
-      <el-button type="primary" @click="save" style="background: #00a86b; border-color: #00a86b;">发布</el-button>
+      <el-button type="primary" @click="save">发布</el-button>
     </template>
   </el-dialog>
 </template>
