@@ -178,8 +178,10 @@ public class UserController {
         if (user == null) {
             return R.fail(404, "用户不存在");
         }
-        user.password = BCrypt.withDefaults().hashToString(10, newPassword.toCharArray());
-        userRepository.persist(user);
+        String passwordHash = BCrypt.withDefaults().hashToString(10, newPassword.toCharArray());
+        if (userRepository.updatePassword(user.id, passwordHash) != 1) {
+            return R.fail(500, "密码更新失败");
+        }
         return R.ok();
     }
 

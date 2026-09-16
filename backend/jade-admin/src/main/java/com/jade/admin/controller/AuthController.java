@@ -104,9 +104,11 @@ public class AuthController {
         if (!result.verified) {
             return R.fail(400, "旧密码错误");
         }
-        user.password = at.favre.lib.crypto.bcrypt.BCrypt.withDefaults()
+        String passwordHash = at.favre.lib.crypto.bcrypt.BCrypt.withDefaults()
                 .hashToString(10, newPwd.toCharArray());
-        userRepository.persist(user);
+        if (userRepository.updatePassword(user.id, passwordHash) != 1) {
+            return R.fail(500, "密码更新失败");
+        }
         return R.ok();
     }
 

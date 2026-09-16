@@ -17,6 +17,22 @@ public class SysUserRepository implements PanacheRepository<SysUser> {
     }
 
     /**
+     * Password is excluded from ordinary entity updates so response redaction cannot
+     * accidentally persist a null value. Password changes must use this explicit path.
+     */
+    public int updatePassword(Long userId, String passwordHash) {
+        return getEntityManager().createNativeQuery("""
+                        UPDATE sys_user
+                           SET password = ?1,
+                               updated_at = CURRENT_TIMESTAMP
+                         WHERE id = ?2
+                        """)
+                .setParameter(1, passwordHash)
+                .setParameter(2, userId)
+                .executeUpdate();
+    }
+
+    /**
      * 根据当前用户的 data-scope 权限, 返回被限制的 PanacheQuery
      *
      * 简化实现: 不用 JPQL 关联 sys_user_dept (非 JPA 实体), 而是

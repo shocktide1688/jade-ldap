@@ -1,0 +1,42 @@
+# Jade LDAP on k3s
+
+This directory contains the non-secret workload definition for the independent
+Jade LDAP server. Runtime secrets are created directly in the `jade-ldap`
+namespace and must not be committed.
+
+## Exposed endpoints
+
+- Admin UI: `http://<node-ip>:30173`
+- Health/API: `http://<node-ip>:31080`
+- LDAP and StartTLS: `<node-ip>:31389`
+- LDAPS: `<node-ip>:31636`
+
+The backend runs two replicas against one PostgreSQL directory store. Both
+replicas mount the same Kubernetes-managed JKS certificate so LDAP clients see
+one certificate regardless of the selected pod.
+
+## Required secrets
+
+Create these secrets before applying `jade-ldap.yaml`:
+
+- `jade-ldap-secrets`: PostgreSQL, LDAP admin, JWT, crypto, and JKS passwords.
+- `jade-ldap-tls`: `ldap-keystore.jks`.
+- `gitea-registry`: registry pull credentials for the private images.
+
+Generate or retrieve the values from a controlled credential store. Do not put
+literal credentials in this repository.
+
+## Deploy and verify
+
+```bash
+kubectl apply -f deploy/k3s/jade-ldap.yaml
+kubectl -n jade-ldap rollout status statefulset/postgres --timeout=300s
+kubectl -n jade-ldap rollout status statefulset/redis --timeout=300s
+kubectl -n jade-ldap rollout status deployment/jade-ldap --timeout=600s
+kubectl -n jade-ldap rollout status deployment/jade-ldap-frontend --timeout=300s
+kubectl -n jade-ldap get pod,pvc,service
+```
+
+The PVCs intentionally use the cluster's `local-path` storage class. This is
+suitable for the current single-node k3s environment; move PostgreSQL to
+replicated storage or an external managed database before adding nodes.
