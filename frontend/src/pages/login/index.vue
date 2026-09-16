@@ -8,7 +8,7 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-const form = reactive({ username: 'admin', password: 'admin123' })
+const form = reactive({ username: 'admin', password: '' })
 const loading = ref(false)
 
 async function handleLogin() {
@@ -61,7 +61,7 @@ async function handleLogin() {
           登录
         </el-button>
       </el-form>
-      <p class="tip">默认账号：admin / admin123</p>
+      <p class="tip">管理员账号密码由部署环境安全配置提供</p>
     </div>
   </div>
 </template>

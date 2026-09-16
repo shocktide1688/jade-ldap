@@ -44,7 +44,15 @@ service.interceptors.response.use(
       return response
     }
 
-    // 1001/1002 未登录
+    const isLoginRequest = response.config.url?.includes('/api/v1/auth/login') === true
+
+    // 登录请求的 1001 是凭证错误，不是会话过期。
+    if (res.code === 1001 && isLoginRequest) {
+      ElMessage.error(res.message || '用户名或密码错误')
+      return Promise.reject(new Error(res.message))
+    }
+
+    // 其他请求的 1001/1002 才表示已有会话失效。
     if (res.code === 1001 || res.code === 1002) {
       ElMessageBox.confirm('登录状态已过期，请重新登录', '提示', {
         confirmButtonText: '重新登录',
