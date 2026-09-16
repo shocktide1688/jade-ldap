@@ -7,6 +7,7 @@ steps:
     image: docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21
     environment:
       TEST_DB_URL: jdbc:postgresql://postgres:5432/jade_ldap?currentSchema=public
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/jade_ldap?currentSchema=public
       QUARKUS_REDIS_HOSTS: redis://redis:6379
     commands:
       - mvn -f backend/pom.xml -B -pl jade-ldap -am test
