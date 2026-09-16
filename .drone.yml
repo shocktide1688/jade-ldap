@@ -5,6 +5,9 @@ name: jade-ldap-ci
 steps:
   - name: backend-tests
     image: docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21
+    environment:
+      TEST_DB_URL: jdbc:postgresql://postgres:5432/jade_ldap?currentSchema=public
+      QUARKUS_REDIS_HOSTS: redis://redis:6379
     commands:
       - mvn -f backend/pom.xml -B -pl jade-ldap -am test
 
@@ -30,6 +33,17 @@ steps:
       - 'docker push "192.168.199.224:30030/reqpilot-admin/jade-ldap-server:$DRONE_COMMIT_SHA"'
     depends_on:
       - backend-tests
+
+services:
+  - name: postgres
+    image: docker.m.daocloud.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_DB: jade_ldap
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  - name: redis
+    image: docker.m.daocloud.io/library/redis:7-alpine
 
 trigger:
   branch:
