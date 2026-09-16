@@ -44,3 +44,18 @@ kubectl -n jade-ldap get pod,pvc,service
 The PVCs intentionally use the cluster's `local-path` storage class. This is
 suitable for the current single-node k3s environment; move PostgreSQL to
 replicated storage or an external managed database before adding nodes.
+
+## Automated delivery
+
+The `main` branch is delivered through Drone and Argo CD:
+
+1. Drone runs the backend and frontend quality gates.
+2. Drone builds and pushes both images with the full source commit SHA.
+3. Drone updates `apps/jade-ldap/app.yaml` in the separate
+   `reqpilot-admin/jade-ldap-gitops` repository.
+4. Argo CD watches that repository and automatically syncs the `jade-ldap`
+   application with pruning and self-healing enabled.
+
+`jade-ldap-application.yaml` is the one-time Argo CD bootstrap manifest. Apply
+it directly only when recreating the Argo CD Application; normal releases must
+flow through the GitOps repository rather than direct `kubectl apply` calls.

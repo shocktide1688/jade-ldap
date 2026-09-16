@@ -42,6 +42,41 @@ steps:
     depends_on:
       - backend-tests
 
+  - name: build-frontend
+    image: docker.m.daocloud.io/library/docker:27-cli
+    environment:
+      DOCKER_HOST: tcp://172.17.0.1:2375
+      REGISTRY_USERNAME:
+        from_secret: registry_username
+      REGISTRY_PASSWORD:
+        from_secret: registry_password
+    commands:
+      - 'echo "$REGISTRY_PASSWORD" | docker login 192.168.199.224:30030 --username "$REGISTRY_USERNAME" --password-stdin'
+      - 'docker build -f frontend/Dockerfile -t "192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:$DRONE_COMMIT_SHA" frontend'
+      - 'docker push "192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:$DRONE_COMMIT_SHA"'
+    depends_on:
+      - frontend-quality
+
+  - name: update-gitops
+    image: docker.m.daocloud.io/library/alpine:3.22
+    environment:
+      GITEA_TOKEN:
+        from_secret: gitops_token
+    commands:
+      - sed -i 's#dl-cdn.alpinelinux.org#mirrors.aliyun.com#' /etc/apk/repositories
+      - apk add --no-cache git ca-certificates
+      - 'git clone "http://drone-bot:$GITEA_TOKEN@192.168.199.224:30030/reqpilot-admin/jade-ldap-gitops.git" /tmp/gitops'
+      - 'sed -i "s#image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-server:.*#image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-server:$DRONE_COMMIT_SHA#" /tmp/gitops/apps/jade-ldap/app.yaml'
+      - 'sed -i "s#image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:.*#image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:$DRONE_COMMIT_SHA#" /tmp/gitops/apps/jade-ldap/app.yaml'
+      - git -C /tmp/gitops config user.name "Drone CI"
+      - git -C /tmp/gitops config user.email "drone@reqpilot.local"
+      - git -C /tmp/gitops add apps/jade-ldap/app.yaml
+      - git -C /tmp/gitops diff --cached --quiet || git -C /tmp/gitops commit -m "deploy jade-ldap $DRONE_COMMIT_SHA"
+      - git -C /tmp/gitops push origin main
+    depends_on:
+      - build-native-server
+      - build-frontend
+
 services:
   - name: postgres
     image: docker.m.daocloud.io/library/postgres:16-alpine
