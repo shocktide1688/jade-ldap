@@ -1,6 +1,68 @@
-# Jade Platform
+# Jade LDAP
 
-> **温润如玉，稳定如石** — 基于 Quarkus 3.39 LTS + Vue 3.5 的企业级全栈开发底座。
+> 基于 Jade Platform 底座、自主实现 LDAP 协议与目录服务的新一代 LDAP Server。
+
+`jade-ldap` 是从 Jade 底座独立派生的 LDAP Server 产品。它保留 Quarkus、Vue、JWT/RBAC、多租户、审计、PostgreSQL 和 Redis 能力，由 Java 进程自己提供 LDAP 协议、目录树、Bind、Search 和目录管理能力，不依赖 OpenLDAP。
+
+## LDAP 项目快速启动
+
+```bash
+docker compose -f docker-compose.ldap.yml up -d
+cd backend
+JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home \
+  mvn -pl jade-ldap -am quarkus:dev
+```
+
+默认本地端口为 PostgreSQL `5433`、Redis `6381` 和 Jade LDAP `1389`，可与原底座同时运行。Base DN 为 `dc=jade,dc=local`，管理 DN 为 `cn=admin,dc=jade,dc=local`。PostgreSQL 是目录数据、账号锁定和 Bind 审计的持久化来源；`LDAP_DATA_FILE` 只用于首次启动时迁移旧 LDIF，迁移完成后不再作为运行时数据源。多个实例共享数据库时会通过目录 revision 自动刷新本地 LDAP 读模型。
+
+生产环境可使用 PKCS12 或 JKS 密钥库开启 LDAPS（默认端口 `1636`）：
+
+```bash
+export LDAPS_ENABLED=true
+export LDAPS_PORT=1636
+export LDAP_STARTTLS_ENABLED=true
+export LDAPS_KEY_STORE_PATH=/absolute/path/to/ldap-server.p12
+export LDAPS_KEY_STORE_PASSWORD='replace-with-secret'
+export LDAP_ADMIN_PASSWORD='replace-with-secret'
+
+cd backend
+JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home \
+  mvn -pl jade-ldap -am quarkus:dev
+```
+
+`LDAPS_SELF_SIGNED=true` 只用于本地测试；生产环境应配置受信任证书，并通过密钥管理系统注入密码。LDAP 明文端口和 LDAPS 端口可独立设置为 `LDAP_PORT`、`LDAPS_PORT`。证书文件默认每 30 秒检测一次（`LDAP_CERTIFICATE_RELOAD_SECONDS`），也可调用 `POST /api/v1/directory/server/tls/reload` 立即重载；LDAPS 与 StartTLS 共用同一密钥库。
+
+当前首个可运行版本支持：
+
+- LDAP v3 协议监听、Bind、Search 和 Compare
+- `ou=people` / `ou=groups` 基础目录树
+- SSHA-256 加盐密码存储
+- PostgreSQL 目录存储、Base DN 隔离、revision 同步和多副本一致性
+- LDAP 端口默认只读，写入统一通过受 Jade `admin` 角色保护的管理 API
+- 用户查询、创建、资料修改、删除和改密 API
+- 标准 LDAP 用户组、成员关系和目录树管理 API
+- 独立的 LDAP 管理控制台：服务状态、目录用户、用户组和目录树
+- RFC 2696 分页搜索、可配置 LDAPS（默认 `1636`）与 StartTLS，支持 PKCS12/JKS 密钥库热重载
+- PostgreSQL 持久化 Bind 审计、失败次数跟踪、跨重启/多实例自动锁定与管理员解锁
+- Bind 审计支持 DN、成功状态和时间范围筛选、分页查询，并按 `LDAP_AUDIT_RETENTION_DAYS`（默认 90 天）自动清理
+- 目录密码复杂度策略（默认至少 12 位并包含大小写、数字和特殊字符）
+
+完整容器栈与协议验收：
+
+```bash
+LDAP_ADMIN_PASSWORD='replace-with-secret' \
+  docker compose -f docker-compose.ldap.yml --profile full up -d --build
+
+LDAP_ADMIN_PASSWORD='replace-with-secret' \
+  LDAP_LOAD_REQUESTS=200 LDAP_LOAD_CONCURRENCY=20 \
+  scripts/ldap-compat-load.sh
+```
+
+完整容器栈包括 PostgreSQL、Redis、Jade LDAP Server 和 nginx 前端，默认暴露 HTTP `8080`、LDAP `1389`、LDAPS `1636` 与前端 `5173`。验收脚本覆盖 LDAP/LDAPS/StartTLS、Compare、RFC 2696 分页和并发认证搜索。
+
+---
+
+## 底座说明
 
 Jade 是面向企业级 Java 应用的**全栈开发底座**，采用前后端分离 + Monorepo 架构。后端基于 Quarkus 3.39 LTS（云原生、GraalVM 原生镜像 84ms 启动），前端基于 Vue 3.5 + Vite 7 + Element Plus 2.14。
 

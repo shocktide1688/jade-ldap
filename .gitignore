@@ -21,6 +21,8 @@ mvnw.cmd
 HELP.md
 *.log
 hs_err_pid*
+backend/jade-ldap/data/
+jade-ldap/data/
 
 # Node / Frontend
 node_modules/

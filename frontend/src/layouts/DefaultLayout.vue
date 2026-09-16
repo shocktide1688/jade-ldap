@@ -8,6 +8,7 @@ import request from '@/utils/request'
 import {
   House, Expand, Fold, UserFilled, User, Menu, OfficeBuilding, Reading,
   Document, Key, Refresh, SwitchButton, Bell,
+  Connection,
 } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
@@ -21,6 +22,7 @@ const ICON_MAP: Record<string, any> = {
   首页: House, 用户管理: User, 角色管理: UserFilled, 菜单管理: Menu,
   部门管理: OfficeBuilding, 字典管理: Reading, 操作日志: Document, 登录日志: Key,
   通知公告: Bell,
+  'LDAP 目录': Connection,
 }
 
 async function loadMenus() {
@@ -91,8 +93,8 @@ async function handleCommand(cmd: string) {
   <el-container class="layout">
     <el-aside :width="appStore.sidebarCollapsed ? '64px' : '220px'" class="aside">
       <div class="logo" @click="router.push('/dashboard')">
-        <span v-if="!appStore.sidebarCollapsed">Jade Platform</span>
-        <span v-else>玉</span>
+        <span v-if="!appStore.sidebarCollapsed">Jade LDAP</span>
+        <span v-else>LDAP</span>
       </div>
       <el-menu
         :default-active="activeMenu"

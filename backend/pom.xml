@@ -8,8 +8,8 @@
     <artifactId>jade-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Jade Platform Parent</name>
-    <description>Jade - 温润如玉的 Java 全栈底座</description>
+    <name>Jade LDAP Parent</name>
+    <description>Jade LDAP - 基于 Jade 底座的 LDAP 管理与同步平台</description>
 
     <modules>
         <module>jade-dependencies</module>
@@ -23,6 +23,7 @@
         <module>jade-spring-bridge</module>
         <module>jade-admin</module>
         <module>jade-demo</module>
+        <module>jade-ldap</module>
     </modules>
 
     <properties>

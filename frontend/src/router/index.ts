@@ -19,6 +19,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/dashboard/index.vue'),
         meta: { title: '首页', icon: 'House' },
       },
+      {
+        path: 'ldap',
+        name: 'LdapDirectory',
+        component: () => import('@/pages/ldap/index.vue'),
+        meta: { title: 'LDAP 目录', icon: 'Connection' },
+      },
       // ===== 系统管理 =====
       {
         path: 'system/user',

@@ -1,5 +1,5 @@
 # =====================================================
-# Jade Platform · 一键命令
+# Jade LDAP · 一键命令
 # =====================================================
 # 用法：make help
 
@@ -8,10 +8,10 @@ SHELL := /bin/zsh
 export JAVA_HOME := /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home
 export PATH := $(JAVA_HOME)/bin:$(PATH)
 
-DOCKER_COMPOSE = docker-compose
+DOCKER_COMPOSE = docker compose -f docker-compose.ldap.yml
 BACKEND_DIR = backend
 FRONTEND_DIR = frontend
-DEMO = $(BACKEND_DIR)/jade-demo
+LDAP_MODULE = jade-ldap
 
 .DEFAULT_GOAL := help
 
@@ -23,7 +23,7 @@ help: ## 显示帮助
 .PHONY: env
 env: ## 检查环境（JDK / Maven / Node / Docker）
 	@echo "JDK:    $$($(JAVA_HOME)/bin/java -version 2>&1 | head -1)"
-	@echo "Maven:  $$(./$(BACKEND_DIR)/mvnw -v 2>&1 | head -1)"
+	@echo "Maven:  $$(mvn -v 2>&1 | head -1)"
 	@echo "Node:   $$(node -v)"
 	@echo "Docker: $$(docker -v)"
 
@@ -45,30 +45,36 @@ logs: ## 查看中间件日志
 # ---------------- 后端 ----------------
 .PHONY: dev backend-build backend-package backend-test backend-clean
 dev: up ## 启动后端 dev 模式（含热重载）
-	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" PATH="$(JAVA_HOME)/bin:$$PATH" ./mvnw -B quarkus:dev -pl jade-demo -Dquarkus.analytics.disabled=true
+	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" PATH="$(JAVA_HOME)/bin:$$PATH" mvn -B quarkus:dev -pl $(LDAP_MODULE) -am -Dquarkus.analytics.disabled=true
 
 backend-build: ## 编译后端所有模块
-	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" ./mvnw -B -DskipTests install
+	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" mvn -B -DskipTests install
 
 backend-package: ## 打包后端（JVM）
-	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" ./mvnw -B -DskipTests -pl jade-demo -am package
+	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" mvn -B -DskipTests -pl $(LDAP_MODULE) -am package
 
 backend-native: ## 打包后端（GraalVM Native）
-	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" ./mvnw -B -DskipTests -pl jade-demo -am package -Dnative
+	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" mvn -B -DskipTests -pl $(LDAP_MODULE) -am package -Dnative
 
 backend-test: ## 跑后端测试
-	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" ./mvnw -B test
+	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" mvn -B -pl $(LDAP_MODULE) -am test
 
 backend-clean: ## 清理后端构建产物
-	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" ./mvnw -B clean
+	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" mvn -B clean
 
 # ---------------- Docker ----------------
-.PHONY: docker-build docker-run docker-native docker-native-run
+.PHONY: docker-build docker-run docker-native docker-native-run docker-full-up docker-full-down
 docker-build: ## 构建后端 Docker 镜像（JVM）
-	cd $(BACKEND_DIR) && docker build -f jade-demo/Dockerfile -t jade-demo:1.0.0 .
+	docker build -f Dockerfile.ldap -t jade-ldap:local .
 
 docker-run: ## 运行后端 Docker 容器（JVM）
-	docker run --rm -p 8080:8080 --network jade_default --name jade-demo jade-demo:1.0.0
+	$(DOCKER_COMPOSE) --profile full up -d jade-ldap
+
+docker-full-up: ## 构建并启动完整容器栈
+	$(DOCKER_COMPOSE) --profile full up -d --build
+
+docker-full-down: ## 停止完整容器栈
+	$(DOCKER_COMPOSE) --profile full down
 
 docker-native: ## 构建 GraalVM Native Image（容器内构建，宿主机无需 GraalVM）
 	cd $(BACKEND_DIR) && docker build -f jade-demo/Dockerfile.native -t jade-demo:native .
@@ -103,7 +109,7 @@ fe-gen: ## 重新生成 OpenAPI SDK
 .PHONY: all-start all-stop
 all-start: up fe-install ## 启动全栈（后端后台 + 前端后台）
 	@echo "🚀 启动后端（用 JDK 21）..."
-	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" PATH="$(JAVA_HOME)/bin:$$PATH" nohup ./mvnw -B quarkus:dev -pl jade-demo -Dquarkus.analytics.disabled=true > /tmp/jade-backend.log 2>&1 &
+	@cd $(BACKEND_DIR) && JAVA_HOME="$(JAVA_HOME)" PATH="$(JAVA_HOME)/bin:$$PATH" nohup mvn -B quarkus:dev -pl $(LDAP_MODULE) -am -Dquarkus.analytics.disabled=true > /tmp/jade-ldap-backend.log 2>&1 &
 	@echo "🚀 启动前端..."
 	@cd $(FRONTEND_DIR) && nohup npm run dev > /tmp/jade-frontend.log 2>&1 &
 	@sleep 15
@@ -112,7 +118,7 @@ all-start: up fe-install ## 启动全栈（后端后台 + 前端后台）
 	@echo "  前端: http://localhost:5173"
 	@echo ""
 	@echo "📋 验证："
-	@echo "  tail -f /tmp/jade-backend.log   # 后端日志"
+	@echo "  tail -f /tmp/jade-ldap-backend.log   # 后端日志"
 	@echo "  tail -f /tmp/jade-frontend.log  # 前端日志"
 
 all-stop: ## 停止全栈

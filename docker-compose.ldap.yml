@@ -1,0 +1,81 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jade-ldap-postgres
+    environment:
+      POSTGRES_DB: jade_ldap
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - jade-ldap-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d jade_ldap"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: jade-ldap-redis
+    ports:
+      - "6381:6379"
+    volumes:
+      - jade-ldap-redisdata:/data
+    command: redis-server --appendonly yes
+
+  jade-ldap:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile.ldap
+    image: jade-ldap:local
+    container_name: jade-ldap-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8080:8080"
+      - "1389:1389"
+      - "1636:1636"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/jade_ldap?currentSchema=public
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_URL: redis://redis:6379
+      LDAP_ADMIN_PASSWORD: "${LDAP_ADMIN_PASSWORD:-local-container-admin-password}"
+      LDAPS_ENABLED: "${LDAPS_ENABLED:-true}"
+      LDAPS_SELF_SIGNED: "${LDAPS_SELF_SIGNED:-true}"
+      LDAP_STARTTLS_ENABLED: "${LDAP_STARTTLS_ENABLED:-true}"
+      JADE_JWT_SECRET: "${JADE_JWT_SECRET:-dev-only-change-me-in-prod-min-32-bytes-required!!}"
+      JADE_JWT_EXPIRE_SECONDS: "${JADE_JWT_EXPIRE_SECONDS:-7200}"
+      JADE_JWT_ISSUER: "${JADE_JWT_ISSUER:-jade-ldap}"
+      JADE_CRYPTO_MASTER_KEY: "${JADE_CRYPTO_MASTER_KEY:-dev-only-aes-key-32-bytes-required-please!!}"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/q/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 60s
+
+  frontend:
+    profiles: ["full"]
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    image: jade-ldap-frontend:local
+    container_name: jade-ldap-frontend
+    restart: unless-stopped
+    depends_on:
+      jade-ldap:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+
+volumes:
+  jade-ldap-pgdata:
+  jade-ldap-redisdata:
