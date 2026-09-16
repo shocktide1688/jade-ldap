@@ -9,11 +9,18 @@ steps:
       TEST_DB_URL: jdbc:postgresql://postgres:5432/jade_ldap?currentSchema=public
       QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/jade_ldap?currentSchema=public
       QUARKUS_REDIS_HOSTS: redis://redis:6379
+    volumes:
+      - name: maven-cache
+        path: /root/.m2
     commands:
-      - mvn -f backend/pom.xml -B -pl jade-ldap -am test
+      # -s 指定阿里云镜像 settings（mirrorOf=* 含 Central），依赖缓存落在挂载卷，跨构建复用
+      - mvn -s backend/jade-demo/settings-docker.xml -f backend/pom.xml -B -pl jade-ldap -am test
 
   - name: frontend-quality
     image: docker.m.daocloud.io/library/node:22-bookworm-slim
+    volumes:
+      - name: npm-cache
+        path: /root/.npm
     commands:
       - cd frontend
       - npm ci --registry=https://registry.npmmirror.com
@@ -45,6 +52,16 @@ services:
 
   - name: redis
     image: docker.m.daocloud.io/library/redis:7-alpine
+
+# 宿主机卷：跨构建持久化 Maven / npm 依赖缓存
+# 注意：host 卷要求 Drone 仓库设置里开启 Trusted，否则挂载会被静默剥离（步骤仍能跑但无缓存）
+volumes:
+  - name: maven-cache
+    host:
+      path: /var/lib/drone/cache/jade-ldap/m2
+  - name: npm-cache
+    host:
+      path: /var/lib/drone/cache/jade-ldap/npm
 
 trigger:
   branch:

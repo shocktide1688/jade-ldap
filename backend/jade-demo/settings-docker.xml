@@ -5,8 +5,8 @@
   <mirrors>
     <mirror>
       <id>aliyun</id>
-      <mirrorOf>*,!central</mirrorOf>
-      <name>Aliyun Public (with central fallback for fresh artifacts)</name>
+      <mirrorOf>*</mirrorOf>
+      <name>Aliyun Public (proxies Maven Central, jcenter and more)</name>
       <url>https://maven.aliyun.com/repository/public</url>
     </mirror>
   </mirrors>
