@@ -5,7 +5,7 @@
 # =====================================================
 
 # ---------- Stage 1: native builder ----------
-FROM m.daocloud.io/quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21 AS builder
+FROM m.daocloud.io/quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 AS builder
 
 ENTRYPOINT []
 USER root
@@ -44,10 +44,14 @@ RUN mvn -f backend/pom.xml -B -q -DskipTests -pl jade-ldap -am dependency:go-off
 COPY backend ./backend
 RUN mvn -f backend/pom.xml -B -DskipTests \
         -pl jade-ldap -am \
-        clean package \
+        clean install \
+    && mvn -f backend/pom.xml -B -DskipTests \
+        -pl jade-ldap \
+        package \
         -Dnative \
         -Dquarkus.native.enabled=true \
-        -Dquarkus.native.container-build=false
+        -Dquarkus.native.container-build=false \
+        -Dquarkus.native.march=compatibility
 
 RUN test -x backend/jade-ldap/target/jade-ldap-1.0.0-SNAPSHOT-runner
 
