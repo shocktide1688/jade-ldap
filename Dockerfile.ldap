@@ -5,7 +5,7 @@
 # =====================================================
 
 # ---------- Stage 1: native builder ----------
-FROM quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21 AS builder
+FROM m.daocloud.io/quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21 AS builder
 
 ENTRYPOINT []
 USER root
