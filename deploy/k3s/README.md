@@ -15,6 +15,10 @@ The backend runs two replicas against one PostgreSQL directory store. Both
 replicas mount the same Kubernetes-managed JKS certificate so LDAP clients see
 one certificate regardless of the selected pod.
 
+The backend image is a GraalVM/Mandrel native executable built by Drone from
+`Dockerfile.ldap`. The runtime image does not contain a JVM, and deployment
+manifests pin the immutable full Git SHA image tag produced by CI.
+
 ## Required secrets
 
 Create these secrets before applying `jade-ldap.yaml`:

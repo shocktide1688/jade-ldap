@@ -2,7 +2,7 @@
 
 > 基于 Jade Platform 底座、自主实现 LDAP 协议与目录服务的新一代 LDAP Server。
 
-`jade-ldap` 是从 Jade 底座独立派生的 LDAP Server 产品。它保留 Quarkus、Vue、JWT/RBAC、多租户、审计、PostgreSQL 和 Redis 能力，由 Java 进程自己提供 LDAP 协议、目录树、Bind、Search 和目录管理能力，不依赖 OpenLDAP。
+`jade-ldap` 是从 Jade 底座独立派生的 LDAP Server 产品。它保留 Quarkus、Vue、JWT/RBAC、多租户、审计、PostgreSQL 和 Redis 能力，由 Jade 后端自身提供 LDAP 协议、目录树、Bind、Search 和目录管理能力，不依赖 OpenLDAP。
 
 ## LDAP 项目快速启动
 
@@ -59,6 +59,16 @@ LDAP_ADMIN_PASSWORD='replace-with-secret' \
 ```
 
 完整容器栈包括 PostgreSQL、Redis、Jade LDAP Server 和 nginx 前端，默认暴露 HTTP `8080`、LDAP `1389`、LDAPS `1636` 与前端 `5173`。验收脚本覆盖 LDAP/LDAPS/StartTLS、Compare、RFC 2696 分页和并发认证搜索。
+
+## 生产镜像
+
+生产后端由根目录的 `Dockerfile.ldap` 构建为 GraalVM/Mandrel 25 原生可执行文件，运行镜像不包含 JVM，也不通过 `java -jar` 启动。`main` 分支推送后，Drone 会先执行后端全量测试和前端门禁，再构建并推送带完整 Git SHA 标签的 `linux/amd64` 原生镜像。
+
+```bash
+docker build -f Dockerfile.ldap -t jade-ldap-server:native .
+```
+
+原生构建使用 `-march=compatibility`，便于在不同 x86-64 节点运行。k3s 发布必须引用不可变的完整提交 SHA 标签。
 
 ---
 
