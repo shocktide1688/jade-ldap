@@ -12,6 +12,7 @@ import MenuPage from '@/pages/system/menu.vue'
 import DeptPage from '@/pages/system/dept.vue'
 import DictPage from '@/pages/system/dict.vue'
 import NoticePage from '@/pages/system/notice.vue'
+import ConfigPage from '@/pages/system/config.vue'
 import OperLogPage from '@/pages/monitor/operlog.vue'
 import LoginLogPage from '@/pages/monitor/loginlog.vue'
 import ProfilePage from '@/pages/profile/index.vue'
@@ -78,6 +79,12 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemNotice',
         component: NoticePage,
         meta: { title: '通知公告', icon: 'Bell' },
+      },
+      {
+        path: 'system/config',
+        name: 'SystemConfig',
+        component: ConfigPage,
+        meta: { title: '参数配置', icon: 'Setting' },
       },
       // ===== 系统监控 =====
       {

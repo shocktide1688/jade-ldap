@@ -57,6 +57,9 @@ public class AuthService {
     BusinessMetrics metrics;
 
     @Inject
+    CaptchaService captchaService;
+
+    @Inject
     Event<LoginEvent> loginEvent;
 
     @ConfigProperty(name = "jade.jwt.expire-seconds", defaultValue = "7200")
@@ -65,6 +68,12 @@ public class AuthService {
     public R<LoginResponse> login(LoginRequest req, String ip) {
         Timer.Sample sample = Timer.start();
         try {
+            // 0) 验证码：开关开启且该用户名失败次数达到阈值时强制校验（密码验证前，防爆破）
+            if (captchaService.isRequired(req.getUsername())
+                    && !captchaService.verify(req.getCaptchaId(), req.getCaptchaCode())) {
+                throw new BizException(ResultCode.CAPTCHA_ERROR, "验证码错误");
+            }
+
             // 1) 查用户
             SysUser user = userRepository.findByUsername(req.getUsername()).orElse(null);
 
@@ -73,6 +82,7 @@ public class AuthService {
 
             if (user == null || !valid) {
                 metrics.recordLoginFailure();
+                captchaService.recordFail(req.getUsername());
                 loginEvent.fire(new LoginEvent(req.getUsername(), ip, false, "用户名或密码错误"));
                 throw new BizException(ResultCode.UNAUTHORIZED, "用户名或密码错误");
             }
@@ -80,6 +90,7 @@ public class AuthService {
             // 3) 账号状态
             if (user.status == 0) {
                 metrics.recordLoginFailure();
+                captchaService.recordFail(req.getUsername());
                 loginEvent.fire(new LoginEvent(req.getUsername(), ip, false, "账号已被禁用"));
                 throw new BizException(ResultCode.FORBIDDEN, "账号已被禁用");
             }
@@ -96,6 +107,7 @@ public class AuthService {
             );
 
             metrics.recordLoginSuccess();
+            captchaService.resetFail(req.getUsername());
             loginEvent.fire(new LoginEvent(req.getUsername(), ip, true, "登录成功"));
 
             return R.ok(new LoginResponse(

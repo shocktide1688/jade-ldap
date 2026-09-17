@@ -8,11 +8,11 @@ import { useTabsStore, type TabItem } from '@/stores/tabs'
 import request from '@/utils/request'
 import {
   House, UserFilled, User, Menu, OfficeBuilding, Reading,
-  Document, Key, SwitchButton, Bell,
+  Document, Key, SwitchButton, Bell, Setting,
   Connection,
 } from '@element-plus/icons-vue'
 import { MorphIcon } from 'morphicons/vue'
-import { PanelLeftClose, PanelLeftOpen, RefreshCw, Check, X, House as HouseLucide, RotateCw } from 'lucide'
+import { PanelLeftClose, PanelLeftOpen, RefreshCw, Check, X, House as HouseLucide, RotateCw, Sun, Moon, Monitor } from 'lucide'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
@@ -25,7 +25,7 @@ const menus = ref<any[]>([])
 const ICON_MAP: Record<string, any> = {
   首页: House, 用户管理: User, 角色管理: UserFilled, 菜单管理: Menu,
   部门管理: OfficeBuilding, 字典管理: Reading, 操作日志: Document, 登录日志: Key,
-  通知公告: Bell,
+  通知公告: Bell, 参数配置: Setting,
   'LDAP 目录': Connection,
 }
 
@@ -64,6 +64,15 @@ function filterUnregistered(items: any[]): any[] {
       // 叶子菜单: 路径必须在路由表里
       return REGISTERED_PATHS.has(it.path)
     })
+}
+
+// 主题模式图标：白天 Sun / 黑夜 Moon / 跟随系统 Monitor
+const THEME_ICONS = { light: Sun, dark: Moon, system: Monitor } as const
+const themeIcon = computed(() => THEME_ICONS[appStore.theme])
+
+// 窄屏自动收起侧栏（图标栏模式），保证内容区可用
+function syncSidebarToViewport() {
+  appStore.sidebarCollapsed = window.innerWidth < 992
 }
 
 // 刷新按钮：点击后 RefreshCw → Check 弹簧变形反馈
@@ -189,15 +198,18 @@ watch(
 )
 
 onMounted(() => {
+  syncSidebarToViewport()
   loadMenus()
   tabsStore.openTab(route)
   tickClock()
   clockTimer = setInterval(tickClock, 1000)
   window.addEventListener('click', onGlobalClick)
+  window.addEventListener('resize', syncSidebarToViewport)
 })
 onUnmounted(() => {
   clearInterval(clockTimer)
   window.removeEventListener('click', onGlobalClick)
+  window.removeEventListener('resize', syncSidebarToViewport)
 })
 </script>
 
@@ -219,9 +231,6 @@ onUnmounted(() => {
         :collapse="appStore.sidebarCollapsed"
         :collapse-transition="false"
         router
-        background-color="transparent"
-        text-color="#9aa5ba"
-        active-text-color="#00e08a"
       >
         <template v-for="m in menus" :key="m.path || m.name">
           <el-sub-menu v-if="m.children && m.children.length" :index="m.path || m.name">
@@ -266,6 +275,17 @@ onUnmounted(() => {
           </el-breadcrumb>
         </div>
         <div class="header-right">
+          <el-tooltip :content="`切换主题：${appStore.nextThemeName()}`" placement="bottom">
+            <el-button text class="icon-btn" @click="appStore.cycleTheme">
+              <MorphIcon
+                :icon="themeIcon"
+                :size="17"
+                spring="snappy"
+                reduced-motion="user"
+                label="切换主题"
+              />
+            </el-button>
+          </el-tooltip>
           <span class="header-clock mono">{{ clock }}</span>
           <el-tooltip content="刷新菜单" placement="bottom">
             <el-button text class="icon-btn" @click="refreshMenus">
@@ -372,8 +392,8 @@ onUnmounted(() => {
 /* ---------------- 侧边栏 ---------------- */
 .aside {
   position: relative;
-  background: linear-gradient(180deg, #0a101f 0%, #070b14 100%);
-  border-right: 1px solid var(--jade-border);
+  background: linear-gradient(180deg, var(--jade-aside-grad-a) 0%, var(--jade-aside-grad-b) 100%);
+  border-right: 1px solid var(--jade-aside-border);
   transition: width 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   overflow-x: hidden;
   display: flex;
@@ -385,7 +405,7 @@ onUnmounted(() => {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 220px;
-  background: radial-gradient(ellipse 70% 100% at 50% 0%, rgba(0, 224, 138, 0.09), transparent 70%);
+  background: radial-gradient(ellipse 70% 100% at 50% 0%, var(--jade-aside-glow), transparent 70%);
   pointer-events: none;
 }
 
@@ -414,12 +434,12 @@ onUnmounted(() => {
   font-size: 19px;
   font-weight: 700;
   letter-spacing: 1.5px;
-  color: var(--jade-text);
+  color: var(--jade-aside-text-strong, var(--jade-text));
   white-space: nowrap;
 }
 
 .logo-accent {
-  background: linear-gradient(120deg, #00e08a, #22d3ee);
+  background: linear-gradient(120deg, var(--jade-primary), var(--jade-cyan));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -428,13 +448,17 @@ onUnmounted(() => {
 .logo-text-mini {
   font-size: 18px;
   font-weight: 800;
-  color: var(--jade-primary);
+  color: var(--jade-aside-active);
 }
 
 .aside :deep(.el-menu) {
   border-right: none;
   padding: 6px 10px;
   flex: 1;
+  --el-menu-text-color: var(--jade-aside-text);
+  --el-menu-hover-bg-color: var(--jade-aside-hover-bg);
+  --el-menu-active-color: var(--jade-aside-active);
+  --el-menu-bg-color: transparent;
 }
 
 .aside :deep(.el-menu-item),
@@ -448,7 +472,7 @@ onUnmounted(() => {
 
 .aside :deep(.el-menu-item:hover),
 .aside :deep(.el-sub-menu__title:hover) {
-  background: rgba(148, 163, 184, 0.08) !important;
+  background: var(--jade-aside-hover-bg) !important;
   color: var(--jade-text) !important;
 }
 
@@ -465,7 +489,7 @@ onUnmounted(() => {
   left: 0; top: 22%; bottom: 22%;
   width: 3px;
   border-radius: 2px;
-  background: linear-gradient(180deg, #00e08a, #22d3ee);
+  background: linear-gradient(180deg, var(--jade-primary), var(--jade-cyan));
   box-shadow: 0 0 10px var(--jade-glow);
 }
 
@@ -477,13 +501,13 @@ onUnmounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 14px 0 16px;
-  border-top: 1px solid var(--jade-border-light);
+  border-top: 1px solid var(--jade-aside-border);
 }
 
 .aside-footer-text {
   font-size: 11px;
   letter-spacing: 2px;
-  color: var(--jade-text-dim);
+  color: var(--jade-aside-text-dim);
 }
 
 /* ---------------- 顶栏 ---------------- */
@@ -495,7 +519,7 @@ onUnmounted(() => {
   justify-content: space-between;
   height: 60px;
   padding: 0 16px;
-  background: rgba(10, 16, 31, 0.75);
+  background: var(--jade-surface);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--jade-border);
@@ -557,7 +581,7 @@ onUnmounted(() => {
   gap: 6px;
   height: 40px;
   padding: 0 12px 0 10px;
-  background: rgba(10, 16, 31, 0.6);
+  background: var(--jade-surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--jade-border);
@@ -655,7 +679,7 @@ onUnmounted(() => {
   background: var(--jade-card-solid);
   border: 1px solid var(--jade-border);
   border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--jade-shadow-panel);
 }
 
 .ctx-item {
@@ -713,4 +737,10 @@ onUnmounted(() => {
 
 .breadcrumb { font-size: 13px; white-space: nowrap; }
 .crumb-current { color: var(--jade-text); font-weight: 500; }
+
+/* 小屏：隐藏时钟与面包屑（标签栏已承担定位），防止顶栏挤压 */
+@media (max-width: 639px) {
+  .header-clock { display: none; }
+  .breadcrumb { display: none; }
+}
 </style>

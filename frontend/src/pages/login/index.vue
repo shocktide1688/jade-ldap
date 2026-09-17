@@ -3,18 +3,58 @@ import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { hasAutoLogin } from '@/utils/auth'
+import request from '@/utils/request'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-const form = reactive({ username: 'admin', password: '' })
+const form = reactive({
+  username: 'admin',
+  password: '',
+  captchaId: '' as string | undefined,
+  captchaCode: '' as string | undefined,
+})
 const loading = ref(false)
+// 之前勾选过自动登录则默认保持勾选
+const autoLogin = ref(hasAutoLogin())
+
+// ---------- 验证码：后台可开关，失败次数达阈值后强制 ----------
+const captcha = reactive({ enabled: false, required: false, id: '', svg: '' })
+
+async function refreshCaptchaStatus() {
+  try {
+    const res: any = await request({
+      url: '/api/v1/auth/captcha/status',
+      method: 'GET',
+      params: { username: form.username || undefined },
+    })
+    const d = res.data.data
+    captcha.enabled = !!d.enabled
+    captcha.required = !!d.required
+    if (captcha.required && !captcha.svg) await loadCaptchaImage()
+  } catch {
+    // 后端旧版本无此接口：视为无验证码
+    captcha.enabled = false
+    captcha.required = false
+  }
+}
+
+async function loadCaptchaImage() {
+  try {
+    const res: any = await request({ url: '/api/v1/auth/captcha/new', method: 'GET' })
+    captcha.id = res.data.data.captchaId
+    captcha.svg = res.data.data.svg
+    form.captchaCode = ''
+  } catch { /* 验证码未启用 */ }
+}
 
 // 打字机副标题
 const typed = ref('')
 let typeTimer: ReturnType<typeof setTimeout> | undefined
 onMounted(() => {
+  refreshCaptchaStatus()
   const full = '温润如玉 · 稳定如石 · 智驭身份目录'
   let i = 0
   const step = () => {
@@ -28,12 +68,22 @@ onUnmounted(() => clearTimeout(typeTimer))
 async function handleLogin() {
   loading.value = true
   try {
-    await userStore.login(form)
+    form.captchaId = captcha.required ? captcha.id : undefined
+    form.captchaCode = captcha.required ? form.captchaCode : undefined
+    await userStore.login(form, { auto: autoLogin.value })
     ElMessage.success('登录成功')
     const redirect = (route.query.redirect as string) || '/dashboard'
     router.push(redirect)
-  } catch (e) {
-    // 已在 request.ts 统一提示
+  } catch (e: any) {
+    if (e?.code === 1102) {
+      // 验证码错误：刷新图片让用户重试
+      ElMessage.error('验证码错误，请重新输入')
+      await Promise.all([refreshCaptchaStatus(), loadCaptchaImage()])
+    } else if (e?.code === 1001) {
+      ElMessage.error(e?.message || '用户名或密码错误')
+      // 失败次数可能跨过阈值，重新检查是否需要验证码
+      refreshCaptchaStatus()
+    }
   } finally {
     loading.value = false
   }
@@ -76,7 +126,7 @@ async function handleLogin() {
         <h2 class="form-title">欢迎登录</h2>
         <el-form :model="form" label-position="top" @submit.prevent="handleLogin">
           <el-form-item label="用户名">
-            <el-input v-model="form.username" placeholder="请输入用户名" size="large" />
+            <el-input v-model="form.username" placeholder="请输入用户名" size="large" @blur="refreshCaptchaStatus" />
           </el-form-item>
           <el-form-item label="密码">
             <el-input
@@ -88,6 +138,29 @@ async function handleLogin() {
               @keyup.enter="handleLogin"
             />
           </el-form-item>
+          <el-form-item v-if="captcha.required" label="验证码">
+            <div class="captcha-row">
+              <el-input
+                v-model="form.captchaCode"
+                placeholder="输入验证码"
+                size="large"
+                maxlength="4"
+                @keyup.enter="handleLogin"
+              />
+              <div
+                class="captcha-img"
+                title="点击刷新"
+                @click="loadCaptchaImage"
+                v-html="captcha.svg"
+              />
+            </div>
+          </el-form-item>
+          <div class="login-options">
+            <el-checkbox v-model="autoLogin">
+              自动登录
+              <span class="option-hint">会话过期时自动重新登录</span>
+            </el-checkbox>
+          </div>
           <el-button type="primary" size="large" class="login-btn" :loading="loading" @click="handleLogin">
             {{ loading ? '认证中…' : '接入系统' }}
           </el-button>
@@ -118,7 +191,7 @@ async function handleLogin() {
   position: absolute;
   left: 0; right: 0;
   height: 180px;
-  background: linear-gradient(180deg, transparent, rgba(0, 224, 138, 0.045), transparent);
+  background: linear-gradient(180deg, transparent, var(--jade-scanline), transparent);
   animation: scan 9s linear infinite;
   pointer-events: none;
 }
@@ -222,14 +295,14 @@ async function handleLogin() {
   width: 400px;
   padding: 28px 32px 32px;
   border-radius: 18px;
-  background: rgba(13, 20, 36, 0.78);
+  background: var(--jade-panel-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--jade-border);
   box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(0, 224, 138, 0.06),
-    0 0 48px rgba(0, 224, 138, 0.07);
+    var(--jade-shadow-panel),
+    0 0 0 1px var(--jade-glow-soft),
+    0 0 48px var(--jade-glow-soft);
   position: relative;
   overflow: hidden;
 }
@@ -271,6 +344,38 @@ async function handleLogin() {
   color: var(--jade-text);
   letter-spacing: 2px;
 }
+
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.captcha-img {
+  flex-shrink: 0;
+  width: 120px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--jade-border);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--jade-input-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.captcha-img:active { opacity: 0.7; }
+
+.login-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -2px 0 14px;
+}
+
+.option-hint { font-size: 11px; color: var(--jade-text-dim); margin-left: 4px; }
 
 .login-btn {
   width: 100%;

@@ -3,6 +3,7 @@ package com.jade.admin.controller;
 import com.jade.admin.dto.LoginRequest;
 import com.jade.admin.dto.LoginResponse;
 import com.jade.admin.service.AuthService;
+import com.jade.admin.service.CaptchaService;
 import com.jade.common.api.R;
 import com.jade.security.entity.SysUser;
 import com.jade.security.jwt.MpJwtUtil;
@@ -31,6 +32,9 @@ public class AuthController {
     AuthService authService;
 
     @Inject
+    CaptchaService captchaService;
+
+    @Inject
     SysUserRepository userRepository;
 
     @Inject
@@ -41,6 +45,30 @@ public class AuthController {
 
     @Inject
     MpJwtUtil mpJwtUtil;
+
+    /** 验证码开关状态（enabled）与该用户名是否已触发强制验证码（required） */
+    public record CaptchaStatus(boolean enabled, boolean required) {}
+
+    @GET
+    @Path("/captcha/status")
+    @PermitAll
+    @Operation(summary = "验证码配置状态", description = "enabled=后台开启验证码；required=该用户名失败次数已达标，登录必须携带验证码")
+    public R<CaptchaStatus> captchaStatus(@QueryParam("username") String username) {
+        boolean enabled = captchaService.isEnabled();
+        boolean required = enabled && captchaService.isRequired(username == null ? "" : username);
+        return R.ok(new CaptchaStatus(enabled, required));
+    }
+
+    @GET
+    @Path("/captcha/new")
+    @PermitAll
+    @Operation(summary = "生成验证码", description = "返回 captchaId 与 SVG 图片；后台未开启验证码时返回 4004")
+    public R<CaptchaService.CaptchaImage> newCaptcha() {
+        if (!captchaService.isEnabled()) {
+            return R.fail(4004, "验证码未启用");
+        }
+        return R.ok(captchaService.generate());
+    }
 
     @POST
     @Path("/login")

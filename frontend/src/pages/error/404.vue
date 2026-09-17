@@ -34,10 +34,10 @@ const router = useRouter()
   text-align: center;
   padding: 48px 64px;
   border-radius: 18px;
-  background: rgba(13, 20, 36, 0.7);
+  background: var(--jade-panel-bg);
   backdrop-filter: blur(16px);
   border: 1px solid var(--jade-border);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--jade-shadow-panel);
 }
 
 .code {
