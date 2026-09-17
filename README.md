@@ -426,16 +426,3 @@ cd my-app-frontend && npm install
 ## 📄 许可证
 
 MIT License
-
-## 部署安全清单（生产必读）
-
-- **JWT 密钥必须替换**：仓库内置的 `META-INF/jwt-*.pem` 仅为开发密钥。生产部署请生成独立密钥并通过环境变量注入：
-  ```bash
-  openssl genrsa -out jwt-private.pem 2048
-  openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem
-  export JADE_JWT_PRIVATE_KEY=/secure/path/jwt-private.pem
-  export JADE_JWT_PUBLIC_KEY=/secure/path/jwt-public.pem
-  ```
-- 修改所有默认口令：数据库（postgres/postgres）、Grafana（`GF_SECURITY_ADMIN_PASSWORD`）、LDAP 管理密码等
-- SMTP 凭证请使用专用发件账号，并在管理后台「参数配置」中维护
-- `.drone.yml` 与 `deploy/k3s` 中的内网地址请按你的实际环境调整

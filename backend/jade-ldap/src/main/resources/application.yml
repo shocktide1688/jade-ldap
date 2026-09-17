@@ -24,6 +24,8 @@ quarkus:
   flyway:
     migrate-at-start: true
     locations: classpath:db/migration
+    # 多模块迁移合并后，允许低版本号在后应用（CI 中 jade-admin 测试先跑）
+    out-of-order: true
     baseline-on-migrate: true
     validate-on-migrate: false
   smallrye-openapi:
@@ -41,13 +43,13 @@ mp:
     verify:
       issuer: jade-ldap
       publickey:
-        location: "${JADE_JWT_PUBLIC_KEY:META-INF/jwt-public.pem}"
+        location: META-INF/jwt-public.pem
 
 smallrye:
   jwt:
     sign:
       key:
-        location: "${JADE_JWT_PRIVATE_KEY:META-INF/jwt-private.pem}"
+        location: META-INF/jwt-private.pem
     new-token:
       issuer: jade-ldap
       lifetime: 7200

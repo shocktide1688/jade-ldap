@@ -60,7 +60,3 @@ docs/
 
 # Grafana render 失败的临时截图
 monitoring/screenshots/
-
-# 密钥与构建产物（开源防误提交）
-*.tsbuildinfo
-*.pem

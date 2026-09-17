@@ -101,7 +101,7 @@ mp:
     verify:
       issuer: jade-platform
       publickey:
-        location: "${JADE_JWT_PUBLIC_KEY:META-INF/jwt-public.pem}"
+        location: META-INF/jwt-public.pem
 
 # SmallRye JWT 签发配置
 smallrye:
@@ -109,7 +109,7 @@ smallrye:
     sign:
       # RSA 私钥（生产环境务必从密钥管理服务读取）
       key:
-        location: "${JADE_JWT_PRIVATE_KEY:META-INF/jwt-private.pem}"
+        location: META-INF/jwt-private.pem
     new-token:
       issuer: jade-platform
       lifetime: 7200

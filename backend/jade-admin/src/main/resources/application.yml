@@ -93,13 +93,13 @@ mp:
     verify:
       issuer: jade-platform
       publickey:
-        location: "${JADE_JWT_PUBLIC_KEY:META-INF/jwt-public.pem}"
+        location: META-INF/jwt-public.pem
 
 smallrye:
   jwt:
     sign:
       key:
-        location: "${JADE_JWT_PRIVATE_KEY:META-INF/jwt-private.pem}"
+        location: META-INF/jwt-private.pem
     new-token:
       issuer: jade-platform
       lifetime: 7200
