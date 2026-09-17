@@ -14,9 +14,9 @@
     'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 
   /* 品牌色：浅色底用更深的玉绿保证对比度 */
-  --jade-primary: #00875a;
-  --jade-primary-light: #006b48;
-  --jade-primary-dark: #006b48;
+  --jade-primary: #007349;
+  --jade-primary-light: #005c3a;
+  --jade-primary-dark: #005c3a;
   --jade-cyan: #0e8fa3;
   --jade-violet: #6d3fc4;
 
@@ -34,7 +34,7 @@
   /* 文字 */
   --jade-text: #1f2937;
   --jade-text-secondary: #4b5563;
-  --jade-text-dim: #6b7280;
+  --jade-text-dim: #5f6b7d;
 
   /* 发光 / 阴影 */
   --jade-glow: rgba(0, 168, 107, 0.28);
@@ -51,8 +51,8 @@
   --jade-aside-grad-b: #f6f8fb;
   --jade-aside-border: rgba(15, 23, 42, 0.1);
   --jade-aside-text: #4b5563;
-  --jade-aside-text-dim: #6b7280;
-  --jade-aside-active: #00a86b;
+  --jade-aside-text-dim: #5f6b7d;
+  --jade-aside-active: #007349;
   --jade-aside-hover-bg: rgba(15, 23, 42, 0.05);
   --jade-aside-glow: rgba(0, 168, 107, 0.08);
 }
@@ -112,9 +112,17 @@ html.dark {
   --el-fill-color-light: var(--jade-input-bg);
 }
 
-/* 浅色模式下 Element 也对齐玉绿品牌色 */
+/* 浅色模式下 Element 也对齐主题令牌
+   warning/danger 加深：Element 默认琥珀/浅红在白底上只有 2~3:1 */
 :root:not(.dark) {
   --el-color-primary: var(--jade-primary);
+  --el-text-color-primary: var(--jade-text);
+  --el-text-color-regular: var(--jade-text);
+  --el-text-color-secondary: var(--jade-text-secondary);
+  --el-text-color-placeholder: var(--jade-text-dim);
+  --el-text-color-disabled: var(--jade-text-dim);
+  --el-color-warning: #8a5f00;
+  --el-color-danger: #c0392b;
 }
 
 html, body {
