@@ -224,7 +224,6 @@ onUnmounted(() => {
         <span v-if="!appStore.sidebarCollapsed" class="logo-text">
           Jade<span class="logo-accent">LDAP</span>
         </span>
-        <span v-else class="logo-text-mini">J</span>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -445,12 +444,6 @@ onUnmounted(() => {
   -webkit-text-fill-color: transparent;
 }
 
-.logo-text-mini {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--jade-aside-active);
-}
-
 .aside :deep(.el-menu) {
   border-right: none;
   padding: 6px 10px;
@@ -459,6 +452,11 @@ onUnmounted(() => {
   --el-menu-hover-bg-color: var(--jade-aside-hover-bg);
   --el-menu-active-color: var(--jade-aside-active);
   --el-menu-bg-color: transparent;
+}
+
+/* 收起态：去掉水平 padding，图标与 logo 圆标共用同一条中线 */
+.aside :deep(.el-menu--collapse) {
+  padding: 6px 0;
 }
 
 .aside :deep(.el-menu-item),
