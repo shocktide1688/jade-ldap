@@ -191,6 +191,28 @@ body {
   background: transparent;
 }
 
+.el-table .cell {
+  white-space: nowrap;
+}
+
+/* 固定列必须不透明：透明底会让下层滚动内容从固定列里透出来（错节元凶） */
+/* Element 的规则是 background:inherit（继承 tr 透明底）且特异性 (0,3,1)，
+   这里用更高特异性给固定列不透明底，滚动的下层内容才不会透出来 */
+.el-table .el-table__body-wrapper tr td.el-table-fixed-column--left,
+.el-table .el-table__body-wrapper tr td.el-table-fixed-column--right {
+  background: var(--jade-card-solid);
+}
+
+.el-table .el-table__body-wrapper tr:hover td.el-table-fixed-column--left,
+.el-table .el-table__body-wrapper tr:hover td.el-table-fixed-column--right {
+  background: var(--jade-bg-soft);
+}
+
+.el-table .el-table__header-wrapper tr th.el-table-fixed-column--left,
+.el-table .el-table__header-wrapper tr th.el-table-fixed-column--right {
+  background: var(--jade-input-bg);
+}
+
 .el-table th.el-table__cell {
   font-weight: 600;
   letter-spacing: 0.4px;

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
+
+const fmtTime = (t?: string) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '')
 import { onMounted, ref } from 'vue'
 import request from '@/utils/request'
 
@@ -35,7 +38,9 @@ onMounted(fetchData)
         </template>
       </el-table-column>
       <el-table-column prop="msg" label="消息" />
-      <el-table-column prop="loginTime" label="登录时间" width="180" />
+      <el-table-column prop="loginTime" label="登录时间" width="150">
+        <template #default="{ row }">{{ fmtTime(row.loginTime) }}</template>
+      </el-table-column>
     </el-table>
     <el-pagination v-model:current-page="page" v-model:page-size="size" :total="total"
       :page-sizes="[20, 50, 100]" layout="total, sizes, prev, pager, next"

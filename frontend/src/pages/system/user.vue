@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
+import { useMediaQuery } from '@vueuse/core'
+
+const fmtTime = (t?: string) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '')
+
+// 窄屏取消操作列固定，避免固定列盖住数据
+const wide = useMediaQuery('(min-width: 640px)')
 import { onMounted, reactive, ref } from 'vue'
 import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -105,8 +112,10 @@ onMounted(fetchData)
           <el-switch :model-value="row.status === 1" @change="toggleStatus(row)" :disabled="row.username === 'admin'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdAt" label="创建时间" width="180" />
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column prop="createdAt" label="创建时间" width="150">
+        <template #default="{ row }">{{ fmtTime(row.createdAt) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="220" :fixed="wide ? 'right' : false">
         <template #default="{ row }">
           <el-button text type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button text type="warning" @click="openResetPwd(row)">重置密码</el-button>
