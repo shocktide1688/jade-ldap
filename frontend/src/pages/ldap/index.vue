@@ -271,14 +271,19 @@ onMounted(loadAll)
 </template>
 
 <style scoped>
-/* hero 恒为深绿底，按钮不能跟随浅色主题变白底深字 */
+/* hero 恒为深绿底，按钮不能跟随主题配色：
+   常态透明底亮绿字，悬停/聚焦为半透明绿底白字（避免亮绿底配绿字） */
 .hero :deep(.el-button--primary.is-plain) {
   --el-button-text-color: #5ee6b2;
-  --el-button-hover-text-color: #8ff2cd;
+  --el-button-hover-text-color: #eafff5;
+  --el-button-active-text-color: #eafff5;
   --el-button-bg-color: transparent;
-  --el-button-hover-bg-color: rgba(94, 230, 178, 0.14);
+  --el-button-hover-bg-color: rgba(94, 230, 178, 0.22);
+  --el-button-active-bg-color: rgba(94, 230, 178, 0.32);
   --el-button-border-color: rgba(94, 230, 178, 0.55);
   --el-button-hover-border-color: rgba(94, 230, 178, 0.9);
+  --el-button-active-border-color: rgba(94, 230, 178, 0.9);
+  --el-button-outline-color: rgba(94, 230, 178, 0.4);
 }
 .ldap-page { max-width: 1480px; margin: 0 auto; }
 .hero { display: flex; justify-content: space-between; align-items: center; padding: 30px 34px; margin-bottom: 16px; border-radius: 16px; color: white; background: radial-gradient(circle at 85% 20%, #36d39955, transparent 30%), linear-gradient(120deg, #071d18, #123f34); }
