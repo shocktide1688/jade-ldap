@@ -98,7 +98,7 @@ onMounted(loadMetrics)
     </template>
     <el-row :gutter="16">
       <el-col :span="6"><el-statistic title="Native 启动耗时" :value="0.9" suffix="s" /></el-col>
-      <el-col :span="6"><el-statistic title="镜像大小" :value="283" suffix="MB" /></el-col>
+      <el-col :span="6"><el-statistic title="镜像大小" :value="119" suffix="MB" /></el-col>
       <el-col :span="6"><el-statistic title="JVM 内存 (启动后)" :value="18" suffix="MB" /></el-col>
       <el-col :span="6"><el-statistic title="JVM 启动后线程数" :value="17" /></el-col>
     </el-row>

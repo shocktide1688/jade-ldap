@@ -115,7 +115,7 @@ onUnmounted(() => clearInterval(aiTimer))
         <div class="spec-chips mono" aria-hidden="true">
           <span class="chip">Quarkus 3.33 LTS</span>
           <span class="chip">启动 0.9s</span>
-          <span class="chip">镜像 283MB</span>
+          <span class="chip">镜像 119MB</span>
         </div>
       </div>
     </el-card>

@@ -158,7 +158,7 @@ async function handleLogin() {
       <div class="brand-metrics mono" aria-hidden="true">
         <div class="metric"><b>0.9s</b><span>冷启动</span></div>
         <div class="metric-sep" />
-        <div class="metric"><b>283MB</b><span>镜像体积</span></div>
+        <div class="metric"><b>119MB</b><span>镜像体积</span></div>
         <div class="metric-sep" />
         <div class="metric"><b>LTS</b><span>Quarkus 3.33</span></div>
       </div>
