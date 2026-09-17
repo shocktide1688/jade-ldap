@@ -189,7 +189,7 @@ jobs:
         id: meta-native
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/shocktide1688/jade-ldap/jade-demo
+          images: ghcr.io/shocktide1688/jade-demo
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -213,7 +213,7 @@ jobs:
         id: meta-jvm
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/shocktide1688/jade-ldap/jade-demo-jvm
+          images: ghcr.io/shocktide1688/jade-demo-jvm
           tags: |
             type=ref,event=branch,suffix=-jvm
             type=ref,event=tag,suffix=-jvm
@@ -237,7 +237,7 @@ jobs:
         id: meta-admin-native
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/shocktide1688/jade-ldap/jade-admin
+          images: ghcr.io/shocktide1688/jade-admin
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -260,7 +260,7 @@ jobs:
         id: meta-admin-jvm
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/shocktide1688/jade-ldap/jade-admin-jvm
+          images: ghcr.io/shocktide1688/jade-admin-jvm
           tags: |
             type=ref,event=branch,suffix=-jvm
             type=ref,event=tag,suffix=-jvm
@@ -282,7 +282,7 @@ jobs:
         id: frontend-meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/shocktide1688/jade-ldap/jade-frontend
+          images: ghcr.io/shocktide1688/jade-frontend
           tags: |
             type=ref,event=branch
             type=ref,event=tag
