@@ -2,13 +2,18 @@ package com.jade.admin.controller;
 
 import com.jade.admin.dto.LoginRequest;
 import com.jade.admin.dto.LoginResponse;
+import com.jade.admin.dto.ForgotPasswordRequest;
+import com.jade.admin.dto.ResetPasswordRequest;
 import com.jade.admin.service.AuthService;
 import com.jade.admin.service.CaptchaService;
+import com.jade.admin.service.PasswordResetService;
 import com.jade.common.api.R;
 import com.jade.security.entity.SysUser;
 import com.jade.security.jwt.MpJwtUtil;
 import com.jade.security.repository.SysUserRepository;
 import io.quarkus.security.Authenticated;
+import io.smallrye.common.annotation.Blocking;
+import io.smallrye.mutiny.Uni;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
@@ -33,6 +38,9 @@ public class AuthController {
 
     @Inject
     CaptchaService captchaService;
+
+    @Inject
+    PasswordResetService passwordResetService;
 
     @Inject
     SysUserRepository userRepository;
@@ -138,6 +146,24 @@ public class AuthController {
             return R.fail(500, "密码更新失败");
         }
         return R.ok();
+    }
+
+    @POST
+    @Path("/forgot-password")
+    @PermitAll
+    @Blocking
+    @Operation(summary = "忘记密码 · 发送邮箱验证码", description = "邮箱存在则发送验证码（60s 冷却）；不存在也返回成功以防枚举")
+    public Uni<R<Void>> forgotPassword(@Valid ForgotPasswordRequest req) {
+        return passwordResetService.sendResetCode(req.getEmail()).onItem().transform(v -> R.ok());
+    }
+
+    @POST
+    @Path("/reset-password")
+    @PermitAll
+    @Transactional
+    @Operation(summary = "忘记密码 · 验证码重置密码", description = "校验邮箱验证码并重置密码，返回账号用户名")
+    public R<String> resetPassword(@Valid ResetPasswordRequest req) {
+        return R.ok(passwordResetService.reset(req));
     }
 
     @POST

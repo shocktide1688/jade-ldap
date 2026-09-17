@@ -37,6 +37,10 @@
             <artifactId>jade-redis</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mailer</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.jade</groupId>
             <artifactId>jade-oss</artifactId>
         </dependency>

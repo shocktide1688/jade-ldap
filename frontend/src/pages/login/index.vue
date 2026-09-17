@@ -20,6 +20,54 @@ const loading = ref(false)
 // 之前勾选过自动登录则默认保持勾选
 const autoLogin = ref(hasAutoLogin())
 
+// ---------- 忘记密码：邮箱验证码重置 ----------
+const mode = ref<'login' | 'reset'>('login')
+const resetForm = reactive({ email: '', code: '', newPassword: '' })
+const countdown = ref(0)
+let cdTimer: ReturnType<typeof setInterval> | undefined
+
+function goReset() {
+  mode.value = 'reset'
+  resetForm.email = ''
+  resetForm.code = ''
+  resetForm.newPassword = ''
+}
+function goLogin() {
+  mode.value = 'login'
+}
+
+async function sendResetCode() {
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(resetForm.email)) {
+    ElMessage.warning('请先输入正确的邮箱')
+    return
+  }
+  if (countdown.value > 0) return
+  try {
+    await request({ url: '/api/v1/auth/forgot-password', method: 'POST', data: { email: resetForm.email } })
+    ElMessage.success('验证码已发送，请查收邮箱（10 分钟内有效）')
+    countdown.value = 60
+    cdTimer = setInterval(() => {
+      countdown.value -= 1
+      if (countdown.value <= 0) clearInterval(cdTimer)
+    }, 1000)
+  } catch { /* request.ts 已提示 */ }
+}
+
+async function handleReset() {
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(resetForm.email)) return ElMessage.warning('请输入正确的邮箱')
+  if (!resetForm.code) return ElMessage.warning('请输入验证码')
+  if (resetForm.newPassword.length < 6) return ElMessage.warning('新密码至少 6 位')
+  try {
+    const res: any = await request({
+      url: '/api/v1/auth/reset-password', method: 'POST', data: resetForm,
+    })
+    ElMessage.success('密码已重置，请使用新密码登录')
+    form.username = res.data.data || form.username
+    form.password = ''
+    goLogin()
+  } catch { /* request.ts 已提示 */ }
+}
+
 // ---------- 验证码：后台可开关，失败次数达阈值后强制 ----------
 const captcha = reactive({ enabled: false, required: false, id: '', svg: '' })
 
@@ -123,8 +171,8 @@ async function handleLogin() {
           <div class="box-dots" aria-hidden="true"><i /><i /><i /></div>
           <span class="mono box-title">AUTH / 身份认证</span>
         </div>
-        <h2 class="form-title">欢迎登录</h2>
-        <el-form :model="form" label-position="top" @submit.prevent="handleLogin">
+        <h2 class="form-title">{{ mode === 'login' ? '欢迎登录' : '重置密码' }}</h2>
+        <el-form v-if="mode === 'login'" :model="form" label-position="top" @submit.prevent="handleLogin">
           <el-form-item label="用户名">
             <el-input v-model="form.username" placeholder="请输入用户名" size="large" @blur="refreshCaptchaStatus" />
           </el-form-item>
@@ -160,10 +208,39 @@ async function handleLogin() {
               自动登录
               <span class="option-hint">会话过期时自动重新登录</span>
             </el-checkbox>
+            <a class="forgot-link" @click="goReset">忘记密码？</a>
           </div>
           <el-button type="primary" size="large" class="login-btn" :loading="loading" @click="handleLogin">
             {{ loading ? '认证中…' : '接入系统' }}
           </el-button>
+        </el-form>
+
+        <el-form v-else :model="resetForm" label-position="top" @submit.prevent="handleReset">
+          <el-form-item label="绑定邮箱">
+            <el-input v-model="resetForm.email" placeholder="请输入账号绑定的邮箱" size="large" />
+          </el-form-item>
+          <el-form-item label="邮箱验证码">
+            <div class="captcha-row">
+              <el-input v-model="resetForm.code" placeholder="6 位验证码" size="large" maxlength="6" />
+              <el-button size="large" class="send-btn mono" :disabled="countdown > 0" @click="sendResetCode">
+                {{ countdown > 0 ? countdown + 's' : '发送验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
+          <el-form-item label="新密码">
+            <el-input
+              v-model="resetForm.newPassword"
+              type="password"
+              placeholder="至少 6 位"
+              size="large"
+              show-password
+              @keyup.enter="handleReset"
+            />
+          </el-form-item>
+          <el-button type="primary" size="large" class="login-btn" @click="handleReset">重置密码</el-button>
+          <div class="back-login">
+            <a @click="goLogin">返回登录</a>
+          </div>
         </el-form>
         <p class="tip mono">SECURE CHANNEL · 管理员账号密码由部署环境安全配置提供</p>
       </div>
@@ -344,6 +421,28 @@ async function handleLogin() {
   color: var(--jade-text);
   letter-spacing: 2px;
 }
+
+.login-options { justify-content: space-between; }
+
+.forgot-link {
+  font-size: 12px;
+  color: var(--jade-primary);
+  cursor: pointer;
+}
+.forgot-link:hover { color: var(--jade-primary-light); }
+
+.back-login {
+  text-align: center;
+  margin-top: 14px;
+}
+.back-login a {
+  font-size: 12px;
+  color: var(--jade-text-secondary);
+  cursor: pointer;
+}
+.back-login a:hover { color: var(--jade-primary); }
+
+.send-btn { flex-shrink: 0; width: 120px; }
 
 .captcha-row {
   display: flex;
