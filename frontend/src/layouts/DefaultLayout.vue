@@ -516,6 +516,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   height: 60px;
+  flex-shrink: 0;
   padding: 0 16px;
   background: var(--jade-surface);
   backdrop-filter: blur(16px);
@@ -578,6 +579,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   height: 40px;
+  flex-shrink: 0; /* 内容高的页面（如菜单管理）不得挤压 tab 栏 */
   padding: 0 12px 0 10px;
   background: var(--jade-surface);
   backdrop-filter: blur(12px);
