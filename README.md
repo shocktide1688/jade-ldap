@@ -4,6 +4,24 @@
 
 `jade-ldap` 是从 Jade 底座独立派生的 LDAP Server 产品。它保留 Quarkus、Vue、JWT/RBAC、多租户、审计、PostgreSQL 和 Redis 能力，由 Jade 后端自身提供 LDAP 协议、目录树、Bind、Search 和目录管理能力，不依赖 OpenLDAP。
 
+## 界面预览
+
+### 登录
+
+![Jade LDAP 登录页面](docs/images/login.png)
+
+### 管理仪表盘
+
+![Jade LDAP 管理仪表盘](docs/images/dashboard.png)
+
+### LDAP 目录控制台
+
+![LDAP 目录控制台](docs/images/ldap-directory.png)
+
+### Bind 审计
+
+![LDAP Bind 审计](docs/images/bind-audit.png)
+
 ## LDAP 项目快速启动
 
 ```bash

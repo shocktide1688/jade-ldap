@@ -49,8 +49,10 @@ frontend/src/api/generated/
 .DS_Store
 Thumbs.db
 
-# Project: ignore docs/ (kept local only)
-docs/
+# Project: ignore local docs, but keep public README screenshots.
+docs/*
+!docs/images/
+!docs/images/*.png
 
 # IDE
 .idea/
