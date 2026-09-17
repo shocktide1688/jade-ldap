@@ -13,31 +13,7 @@ on:
     branches: [main, develop]
 
 jobs:
-  # 检测哪些目录有变更
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            backend:
-              - 'backend/**'
-              - '.github/workflows/ci.yml'
-            frontend:
-              - 'frontend/**'
-
   backend:
-    needs: changes
-    if: >-
-      ${{
-        needs.changes.outputs.backend == 'true' ||
-        startsWith(github.ref, 'refs/tags/v')
-      }}
     runs-on: ubuntu-latest
     # 单独给 backend job 加 contents: write, 让 "Post mvn log on failure" 能贴 commit comment
     permissions:
@@ -90,11 +66,11 @@ jobs:
           MAVEN_EXIT=${PIPESTATUS[0]}
           echo "maven exit code: $MAVEN_EXIT"
           # 出错时把 tail 写到 step log, 方便 annotation
-          if [ $MAVEN_EXIT -ne 0 ]; then
+          if [ "$MAVEN_EXIT" -ne 0 ]; then
             echo "::group::maven build log (tail 200)"
             tail -200 /tmp/mvn-build.log
             echo "::endgroup::"
-            exit $MAVEN_EXIT
+            exit "$MAVEN_EXIT"
           fi
       - name: Post mvn log to commit on failure
         if: failure()
@@ -124,12 +100,6 @@ jobs:
           if-no-files-found: ignore
 
   frontend:
-    needs: changes
-    if: >-
-      ${{
-        needs.changes.outputs.frontend == 'true' ||
-        startsWith(github.ref, 'refs/tags/v')
-      }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -140,9 +110,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - name: Install
-        # 用 npm install 而不是 npm ci, 避免 lockfile 跟 package.json 不同步时失败
-        # --legacy-peer-deps: 兼容 unplugin-auto-import / pinia-plugin-persistedstate 的 peer dep 范围
-        run: cd frontend && npm install --legacy-peer-deps --no-audit --no-fund
+        run: cd frontend && npm ci --no-audit --no-fund
       - name: Type check
         run: cd frontend && npm run type-check
       - name: Build
@@ -154,11 +122,7 @@ jobs:
           path: frontend/dist/
 
   publish:
-    # 关键修复: 不再 depends on frontend job
-    # 原因: publish 内的 frontend docker build 是从源码 docker build, 不用 frontend job 的 artifact
-    # 之前 frontend 被 paths-filter skip 后, publish 也跟着 skipped (needs 不满足)
-    needs: [changes, backend]
-    # publish 整体在 main 或 tag 上跑
+    needs: [backend, frontend]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -178,119 +142,39 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-buildx-
-      # ============ Backend: Native Image (主推) ============
-      - name: Extract native image metadata
-        id: meta-native
+      - name: Extract LDAP server image metadata
+        id: server-meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/shocktide1688/jade-demo
+          images: ghcr.io/shocktide1688/jade-ldap/server
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=latest-native,enable={{is_default_branch}}
-      - name: Build and push NATIVE image
-        # 单边改动也跑: backend 改了 OR tag
-        if: needs.changes.outputs.backend == 'true' || startsWith(github.ref, 'refs/tags/v')
+      - name: Build and push LDAP native server
         uses: docker/build-push-action@v6
         with:
-          context: backend
-          file: backend/jade-demo/Dockerfile.native
+          context: .
+          file: Dockerfile.ldap
+          platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta-native.outputs.tags }}
-          labels: ${{ steps.meta-native.outputs.labels }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-      # ============ Backend: JVM Image (兼容) ============
-      - name: Extract JVM image metadata
-        id: meta-jvm
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/shocktide1688/jade-demo-jvm
-          tags: |
-            type=ref,event=branch,suffix=-jvm
-            type=ref,event=tag,suffix=-jvm
-            type=sha,suffix=-jvm
-            type=raw,value=latest-jvm,enable={{is_default_branch}}
-      - name: Build and push JVM image
-        # 单边改动也跑: backend 改了 OR tag
-        if: needs.changes.outputs.backend == 'true' || startsWith(github.ref, 'refs/tags/v')
-        uses: docker/build-push-action@v6
-        with:
-          context: backend
-          file: backend/jade-demo/Dockerfile
-          push: true
-          tags: ${{ steps.meta-jvm.outputs.tags }}
-          labels: ${{ steps.meta-jvm.outputs.labels }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-      # ============ Backend: jade-admin Native Image ============
-      # jade-admin 现在跟 jade-demo 平级, 独立可启动应用
-      - name: Extract jade-admin native image metadata
-        id: meta-admin-native
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/shocktide1688/jade-admin
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=latest-native,enable={{is_default_branch}}
-      - name: Build and push jade-admin NATIVE image
-        if: needs.changes.outputs.backend == 'true' || startsWith(github.ref, 'refs/tags/v')
-        uses: docker/build-push-action@v6
-        with:
-          context: backend
-          file: backend/jade-admin/Dockerfile.native
-          push: true
-          tags: ${{ steps.meta-admin-native.outputs.tags }}
-          labels: ${{ steps.meta-admin-native.outputs.labels }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-      # ============ Backend: jade-admin JVM Image ============
-      - name: Extract jade-admin JVM image metadata
-        id: meta-admin-jvm
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/shocktide1688/jade-admin-jvm
-          tags: |
-            type=ref,event=branch,suffix=-jvm
-            type=ref,event=tag,suffix=-jvm
-            type=sha,suffix=-jvm
-            type=raw,value=latest-jvm,enable={{is_default_branch}}
-      - name: Build and push jade-admin JVM image
-        if: needs.changes.outputs.backend == 'true' || startsWith(github.ref, 'refs/tags/v')
-        uses: docker/build-push-action@v6
-        with:
-          context: backend
-          file: backend/jade-admin/Dockerfile
-          push: true
-          tags: ${{ steps.meta-admin-jvm.outputs.tags }}
-          labels: ${{ steps.meta-admin-jvm.outputs.labels }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-      # ============ Frontend ============
+          tags: ${{ steps.server-meta.outputs.tags }}
+          labels: ${{ steps.server-meta.outputs.labels }}
+          cache-from: type=gha,scope=jade-ldap-native
+          cache-to: type=gha,mode=max,scope=jade-ldap-native
       - name: Extract frontend Docker metadata
         id: frontend-meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/shocktide1688/jade-frontend
+          images: ghcr.io/shocktide1688/jade-ldap/jade-frontend
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Build and push frontend image
-        # 单边改动也跑: frontend 改了 OR tag
-        if: needs.changes.outputs.frontend == 'true' || startsWith(github.ref, 'refs/tags/v')
         uses: docker/build-push-action@v6
         with:
           context: frontend
@@ -298,12 +182,8 @@ jobs:
           push: true
           tags: ${{ steps.frontend-meta.outputs.tags }}
           labels: ${{ steps.frontend-meta.outputs.labels }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          cache-from: type=gha,scope=jade-ldap-frontend
+          cache-to: type=gha,mode=max,scope=jade-ldap-frontend
 
   release:
     needs: publish
