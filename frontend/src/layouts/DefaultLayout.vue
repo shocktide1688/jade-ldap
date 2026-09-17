@@ -719,6 +719,7 @@ onUnmounted(() => {
 .main-bg {
   position: absolute;
   inset: 0;
+  overflow: hidden; /* 裁剪极光光斑，避免把页面撑出横向滚动 */
   pointer-events: none;
   /* 网格向下淡出 */
   -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 60%);
@@ -738,9 +739,11 @@ onUnmounted(() => {
 .breadcrumb { font-size: 13px; white-space: nowrap; }
 .crumb-current { color: var(--jade-text); font-weight: 500; }
 
-/* 小屏：隐藏时钟与面包屑（标签栏已承担定位），防止顶栏挤压 */
+/* 小屏：隐藏时钟与面包屑（标签栏已承担定位），收紧留白 */
 @media (max-width: 639px) {
   .header-clock { display: none; }
   .breadcrumb { display: none; }
+  .main-scroll { padding: 12px; }
+  .tab-bar { padding: 0 8px; }
 }
 </style>
