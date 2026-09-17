@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.jade</groupId>
+        <artifactId>jade-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jade-dependencies</artifactId>
+    <packaging>pom</packaging>
+    <name>Jade Dependencies BOM</name>
+    <description>Jade 平台依赖清单（业务项目只需 import 此 BOM）</description>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Jade 内部 starter -->
+            <dependency>
+                <groupId>com.jade</groupId>
+                <artifactId>jade-common</artifactId>
+                <version>${jade.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jade</groupId>
+                <artifactId>jade-web</artifactId>
+                <version>${jade.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jade</groupId>
+                <artifactId>jade-security</artifactId>
+                <version>${jade.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jade</groupId>
+                <artifactId>jade-log</artifactId>
+                <version>${jade.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jade</groupId>
+                <artifactId>jade-redis</artifactId>
+                <version>${jade.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jade</groupId>
+                <artifactId>jade-oss</artifactId>
+                <version>${jade.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jade</groupId>
+                <artifactId>jade-codegen</artifactId>
+                <version>${jade.version}</version>
+            </dependency>
+
+            <!-- 第三方工具 -->
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-core</artifactId>
+                <version>${hutool.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

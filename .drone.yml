@@ -1,0 +1,111 @@
+kind: pipeline
+type: docker
+name: jade-ldap-ci
+
+steps:
+  - name: backend-tests
+    image: docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21
+    environment:
+      TEST_DB_URL: jdbc:postgresql://postgres:5432/jade_ldap?currentSchema=public
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/jade_ldap?currentSchema=public
+      QUARKUS_REDIS_HOSTS: redis://redis:6379
+    volumes:
+      - name: maven-cache
+        path: /root/.m2
+    commands:
+      # -s 指定阿里云镜像 settings（mirrorOf=* 含 Central），依赖缓存落在挂载卷，跨构建复用
+      - mvn -s backend/jade-demo/settings-docker.xml -f backend/pom.xml -B -pl jade-ldap -am test
+
+  - name: frontend-quality
+    image: docker.m.daocloud.io/library/node:22-bookworm-slim
+    volumes:
+      - name: npm-cache
+        path: /root/.npm
+    commands:
+      - cd frontend
+      - npm ci --registry=https://registry.npmmirror.com
+      - npm run type-check
+      - npm run build
+
+  - name: build-native-server
+    image: docker.m.daocloud.io/library/docker:27-cli
+    environment:
+      DOCKER_HOST: tcp://172.17.0.1:2375
+      REGISTRY_USERNAME:
+        from_secret: registry_username
+      REGISTRY_PASSWORD:
+        from_secret: registry_password
+    commands:
+      - 'echo "$REGISTRY_PASSWORD" | docker login 192.168.199.224:30030 --username "$REGISTRY_USERNAME" --password-stdin'
+      - 'docker build -f Dockerfile.ldap -t "192.168.199.224:30030/reqpilot-admin/jade-ldap-server:$DRONE_COMMIT_SHA" .'
+      - 'docker push "192.168.199.224:30030/reqpilot-admin/jade-ldap-server:$DRONE_COMMIT_SHA"'
+    depends_on:
+      - backend-tests
+
+  - name: build-frontend
+    image: docker.m.daocloud.io/library/docker:27-cli
+    environment:
+      DOCKER_HOST: tcp://172.17.0.1:2375
+      REGISTRY_USERNAME:
+        from_secret: registry_username
+      REGISTRY_PASSWORD:
+        from_secret: registry_password
+    commands:
+      - 'echo "$REGISTRY_PASSWORD" | docker login 192.168.199.224:30030 --username "$REGISTRY_USERNAME" --password-stdin'
+      - 'docker build -f frontend/Dockerfile -t "192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:$DRONE_COMMIT_SHA" frontend'
+      - 'docker push "192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:$DRONE_COMMIT_SHA"'
+    depends_on:
+      - frontend-quality
+
+  - name: update-gitops
+    image: docker.m.daocloud.io/library/alpine:3.22
+    environment:
+      GITEA_TOKEN:
+        from_secret: gitops_token
+    commands:
+      - sed -i 's#dl-cdn.alpinelinux.org#mirrors.aliyun.com#' /etc/apk/repositories
+      - apk add --no-cache git ca-certificates
+      - 'git clone "http://drone-bot:$GITEA_TOKEN@192.168.199.224:30030/reqpilot-admin/jade-ldap-gitops.git" /tmp/gitops'
+      - 'sed -i "s#image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-server:.*#image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-server:$DRONE_COMMIT_SHA#" /tmp/gitops/apps/jade-ldap/app.yaml'
+      - 'sed -i "s#image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:.*#image: 192.168.199.224:30030/reqpilot-admin/jade-ldap-frontend:$DRONE_COMMIT_SHA#" /tmp/gitops/apps/jade-ldap/app.yaml'
+      - git -C /tmp/gitops config user.name "Drone CI"
+      - git -C /tmp/gitops config user.email "drone@reqpilot.local"
+      - git -C /tmp/gitops add apps/jade-ldap/app.yaml
+      - git -C /tmp/gitops diff --cached --quiet || git -C /tmp/gitops commit -m "deploy jade-ldap $DRONE_COMMIT_SHA"
+      - git -C /tmp/gitops push origin main
+    depends_on:
+      - build-native-server
+      - build-frontend
+
+services:
+  - name: postgres
+    image: docker.m.daocloud.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_DB: jade_ldap
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  - name: redis
+    image: docker.m.daocloud.io/library/redis:7-alpine
+
+# 宿主机卷：跨构建持久化 Maven / npm 依赖缓存
+# 注意：host 卷要求 Drone 仓库设置里开启 Trusted，否则挂载会被静默剥离（步骤仍能跑但无缓存）
+volumes:
+  - name: maven-cache
+    host:
+      path: /var/lib/drone/cache/jade-ldap/m2
+  - name: npm-cache
+    host:
+      path: /var/lib/drone/cache/jade-ldap/npm
+
+trigger:
+  branch:
+    - main
+  event:
+    - push
+    - custom
+  paths:
+    exclude:
+      - deploy/**
+  instance:
+    - 192.168.199.224:30080

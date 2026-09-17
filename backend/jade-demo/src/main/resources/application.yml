@@ -1,0 +1,175 @@
+quarkus:
+  application:
+    name: jade-demo
+    version: 1.0.0
+
+  http:
+    port: 8080
+    # CORS 用自定义 CorsFilter（Quarkus 3.15 自带的 cors 配置不生效）
+    cors:
+      origins: http://localhost:5173
+      methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
+      headers: accept,authorization,content-type,x-requested-with,x-trace-id,x-idempotency-key
+      exposed-headers: x-trace-id
+
+  datasource:
+    db-kind: postgresql
+    # 安全修复 1：删除默认密码，从环境变量读取，无 fallback
+    username: "${DB_USERNAME:postgres}"
+    password: "${DB_PASSWORD:postgres}"
+    jdbc:
+      # 默认 jade_demo (跟 CI / docker-compose 一致)
+      # 本地开发用 jade_demo 库, 跟 admin 的 jade_admin 库完全隔离
+      # 应急: 启动时 DB_URL=jdbc:postgresql://localhost:5432/jade 临时连老库
+      url: "${DB_URL:jdbc:postgresql://localhost:5432/jade_demo}"
+      max-size: 20
+      min-size: 2
+    devservices:
+      enabled: false
+
+  redis:
+    hosts: ${REDIS_URL:redis://localhost:6379}
+    devservices:
+      enabled: false
+
+  hibernate-orm:
+    database:
+      generation: validate
+    log:
+      sql: false
+    jdbc:
+      timezone: Asia/Shanghai
+
+  flyway:
+    migrate-at-start: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  smallrye-openapi:
+    enable: true
+
+  smallrye-health:
+    root-path: /q/health
+
+  micrometer:
+    binder:
+      jvm: true
+      system: true
+    # 让所有 timer 输出 histogram（不是 summary），Grafana 才能算 p95
+    # Prometheus 输出的名字带 _duration_（http.server.requests → http_server_requests_duration_seconds）
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        jade.login.duration: true
+        jade.order.duration: true
+      slo:
+        http.server.requests: 10ms,50ms,100ms,200ms,500ms,1s,2s,5s
+        jade.login.duration: 50ms,100ms,200ms,500ms,1s
+        jade.order.duration: 5ms,10ms,50ms,100ms,500ms
+    export:
+      prometheus:
+        path: /q/metrics
+
+  log:
+    level: INFO
+    console:
+      format: "%d{HH:mm:ss.SSS} %-5p [%X{traceId}] %c{1.} - %m%n"
+    category:
+      # 噪音调高（Hibernate JDBC/Transaction/Cache 细节）
+      org.hibernate.orm.jdbc:
+        level: WARN
+      org.hibernate.engine.transaction:
+        level: WARN
+      org.hibernate.resource.jdbc:
+        level: WARN
+      org.hibernate.cache:
+        level: WARN
+      io.netty:
+        level: WARN
+      io.vertx:
+        level: WARN
+      # org.hibernate.SQL 留给 %dev 单独打开
+
+mp:
+  openapi:
+    info:
+      title: Jade Demo API
+      version: 1.0.0
+      description: Built with Jade Platform
+  jwt:
+    # MP-JWT 验证配置（与签发端保持一致）
+    verify:
+      issuer: jade-platform
+      publickey:
+        location: "${JADE_JWT_PUBLIC_KEY:META-INF/jwt-public.pem}"
+
+# SmallRye JWT 签发配置
+smallrye:
+  jwt:
+    sign:
+      # RSA 私钥（生产环境务必从密钥管理服务读取）
+      key:
+        location: "${JADE_JWT_PRIVATE_KEY:META-INF/jwt-private.pem}"
+    new-token:
+      issuer: jade-platform
+      lifetime: 7200
+
+# Jade 自定义配置
+jade:
+  jwt:
+    # 安全修复 2：删除默认密钥（从环境变量读）
+    secret: "${JADE_JWT_SECRET:dev-only-change-me-in-prod-min-32-bytes-required!!}"
+    expire-seconds: "${JADE_JWT_EXPIRE_SECONDS:7200}"
+    issuer: "${JADE_JWT_ISSUER:jade-platform}"
+  crypto:
+    # 安全修复 3：AES 密钥从环境变量读，无 fallback
+    master-key: "${JADE_CRYPTO_MASTER_KEY:dev-only-aes-key-32-bytes-required-please!!}"
+  cors:
+    enabled: "${JADE_CORS_ENABLED:true}"
+
+"%dev":
+  quarkus:
+    # === 启动优化（dev 模式专属）===
+    # 关掉 Dev UI（用不到）
+    dev-ui:
+      enabled: false
+    # 关掉 Live Coding（不需要热重载可以省 200-500ms）
+    # live-coding:
+    #   enabled: false
+    # 关掉 Continuous Testing（后台跑测试有开销）
+    continuous-testing:
+      enabled: DISABLED
+
+    hibernate-orm:
+      log:
+        # dev 打开 SQL 日志（多行但内容完整）
+        sql: true
+    log:
+      level: INFO
+      category:
+        # dev 单独打开 SQL 日志
+        org.hibernate.SQL:
+          level: DEBUG
+        # 显示绑定参数 (?1 → 'admin')，对调试超有用
+        org.hibernate.orm.jdbc.bind:
+          level: TRACE
+        # 噪音调高
+        org.hibernate.stat:
+          level: WARN
+        org.hibernate.engine.transaction:
+          level: WARN
+
+"%prod":
+  quarkus:
+    hibernate-orm:
+      log:
+        sql: false
+  jade:
+    jwt:
+      # 生产环境：必须从环境变量读，无默认 fallback
+      # 如果环境变量缺失，Quarkus 启动时会 fail-fast（unknown value）
+      secret: "${JADE_JWT_SECRET}"
+      expire-seconds: "${JADE_JWT_EXPIRE_SECONDS}"
+      issuer: "${JADE_JWT_ISSUER}"
+    crypto:
+      master-key: "${JADE_CRYPTO_MASTER_KEY}"

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jade Platform</title>
+    <script>
+      // 首帧前应用主题，避免闪烁（与 stores/app.ts 的读取逻辑一致）
+      (function () {
+        try {
+          var mode = 'system';
+          var raw = localStorage.getItem('app');
+          if (raw) {
+            var v = JSON.parse(raw).theme;
+            if (v === 'light' || v === 'dark' || v === 'system') mode = v;
+          }
+          var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

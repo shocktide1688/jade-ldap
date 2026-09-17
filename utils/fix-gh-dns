@@ -1,0 +1,56 @@
+#!/bin/zsh
+# =====================================================
+# fix-gh-dns: 解决 Clash fake-ip 把 github.com 劫持到 198.18.0.60 的问题
+# =====================================================
+# 问题:
+#   - Clash fake-ip 模式会把 github.com 解析到假 IP 198.18.0.60
+#   - SSH 连这个假 IP 立刻被关 (port 22 closed)
+#   - git push 失败
+# 解决:
+#   - 用 Cloudflare DoH 拿 github.com 真 IP, 写入 /etc/hosts
+#   - 等 IP 变了再跑一次就行
+#
+# 用法:
+#   sudo fix-gh-dns           # 更新 /etc/hosts
+#   fix-gh-dns --show          # 看当前 hosts 里的 github IP
+#   fix-gh-dns --clean         # 删掉 hosts 里我加的那行
+# =====================================================
+
+set -e
+
+REAL_GH_IP=$(curl -s 'https://dns.alidns.com/resolve?name=github.com&type=A' \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['Answer'][0]['data'])")
+
+HOSTS_LINE="$REAL_GH_IP github.com"
+HOSTS_MARKER="# Mavis: github.com real IP for Clash bypass"
+
+case "${1:-}" in
+  --show)
+    grep "$HOSTS_MARKER" /etc/hosts || echo "(no entry yet)"
+    grep "github.com" /etc/hosts
+    ;;
+  --clean)
+    sudo sed -i '' "/$HOSTS_MARKER/d" /etc/hosts
+    sudo sed -i '' "/^[0-9].*github\.com$/d" /etc/hosts
+    echo "✅ cleaned /etc/hosts entries for github.com"
+    ;;
+  "")
+    if grep -q "$HOSTS_MARKER" /etc/hosts; then
+      sudo sed -i '' "/$HOSTS_MARKER/d" /etc/hosts
+      sudo sed -i '' "/^[0-9].*github\.com$/d" /etc/hosts
+    fi
+    echo "" | sudo tee -a /etc/hosts > /dev/null
+    echo "$HOSTS_MARKER" | sudo tee -a /etc/hosts > /dev/null
+    echo "$REAL_GH_IP github.com" | sudo tee -a /etc/hosts > /dev/null
+    echo "✅ set: github.com → $REAL_GH_IP"
+    sleep 1
+    echo "---verify---"
+    nslookup github.com 2>&1 | grep "Address:" | tail -2
+    echo "---ssh test---"
+    ssh -T -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 git@github.com 2>&1 | head -2
+    ;;
+  *)
+    echo "usage: fix-gh-dns [--show|--clean]"
+    exit 1
+    ;;
+esac

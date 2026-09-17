@@ -1,0 +1,149 @@
+quarkus:
+  application:
+    name: jade-admin
+    version: 1.0.0
+
+  http:
+    port: 8080
+    # CORS 用自定义 CorsFilter
+    cors:
+      origins: http://localhost:5173
+      methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
+      headers: accept,authorization,content-type,x-requested-with,x-trace-id,x-idempotency-key
+      exposed-headers: x-trace-id
+
+  datasource:
+    db-kind: postgresql
+    # jade-admin 用独立 DB jade_admin (跟 demo 的 jade_demo 完全隔离)
+    username: "${DB_USERNAME:postgres}"
+    password: "${DB_PASSWORD:postgres}"
+    jdbc:
+      # prod: 启动时传 DB_URL
+      # test: application.properties 用 TEST_DB_URL 覆盖 (key 一样, test 资源优先)
+      url: "${DB_URL:jdbc:postgresql://localhost:5432/jade_admin?currentSchema=public}"
+      max-size: 20
+      min-size: 2
+    devservices:
+      enabled: false
+
+  redis:
+    hosts: ${REDIS_URL:redis://localhost:6379}
+    devservices:
+      enabled: false
+
+  hibernate-orm:
+    database:
+      generation: validate
+    log:
+      sql: false
+    jdbc:
+      timezone: Asia/Shanghai
+
+  flyway:
+    migrate-at-start: true
+    locations: classpath:db/migration
+    # V4 起, baseline 已有 (V4 之前没有 V1~V3, 因为 admin 的迁移是自包含的)
+    baseline-on-migrate: true
+    validate-on-migrate: false
+
+  smallrye-openapi:
+    enable: true
+
+  smallrye-health:
+    root-path: /q/health
+
+  micrometer:
+    binder:
+      jvm: true
+      system: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 10ms,50ms,100ms,200ms,500ms,1s,2s,5s
+    export:
+      prometheus:
+        path: /q/metrics
+
+  log:
+    level: INFO
+    console:
+      format: "%d{HH:mm:ss.SSS} %-5p [%X{traceId}] %c{1.} - %m%n"
+    category:
+      org.hibernate.orm.jdbc:
+        level: WARN
+      org.hibernate.engine.transaction:
+        level: WARN
+      org.hibernate.resource.jdbc:
+        level: WARN
+      org.hibernate.cache:
+        level: WARN
+      io.netty:
+        level: WARN
+      io.vertx:
+        level: WARN
+
+mp:
+  openapi:
+    info:
+      title: Jade Admin API
+      version: 1.0.0
+      description: Jade Platform 管理后台
+  jwt:
+    verify:
+      issuer: jade-platform
+      publickey:
+        location: "${JADE_JWT_PUBLIC_KEY:META-INF/jwt-public.pem}"
+
+smallrye:
+  jwt:
+    sign:
+      key:
+        location: "${JADE_JWT_PRIVATE_KEY:META-INF/jwt-private.pem}"
+    new-token:
+      issuer: jade-platform
+      lifetime: 7200
+
+jade:
+  jwt:
+    secret: "${JADE_JWT_SECRET:dev-only-change-me-in-prod-min-32-bytes-required!!}"
+    expire-seconds: "${JADE_JWT_EXPIRE_SECONDS:7200}"
+    issuer: "${JADE_JWT_ISSUER:jade-platform}"
+  crypto:
+    master-key: "${JADE_CRYPTO_MASTER_KEY:dev-only-aes-key-32-bytes-required-please!!}"
+  cors:
+    enabled: "${JADE_CORS_ENABLED:true}"
+
+"%dev":
+  quarkus:
+    dev-ui:
+      enabled: false
+    continuous-testing:
+      enabled: DISABLED
+    hibernate-orm:
+      log:
+        sql: true
+    log:
+      level: INFO
+      category:
+        org.hibernate.SQL:
+          level: DEBUG
+        org.hibernate.orm.jdbc.bind:
+          level: TRACE
+        org.hibernate.stat:
+          level: WARN
+        org.hibernate.engine.transaction:
+          level: WARN
+
+"%prod":
+  quarkus:
+    hibernate-orm:
+      log:
+        sql: false
+  jade:
+    jwt:
+      secret: "${JADE_JWT_SECRET}"
+      expire-seconds: "${JADE_JWT_EXPIRE_SECONDS}"
+      issuer: "${JADE_JWT_ISSUER}"
+    crypto:
+      master-key: "${JADE_CRYPTO_MASTER_KEY}"

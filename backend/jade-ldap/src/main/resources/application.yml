@@ -1,0 +1,99 @@
+quarkus:
+  application:
+    name: jade-ldap
+    version: 1.0.0
+  http:
+    port: 8080
+  datasource:
+    db-kind: postgresql
+    username: "${DB_USERNAME:postgres}"
+    password: "${DB_PASSWORD:postgres}"
+    jdbc:
+      url: "${DB_URL:jdbc:postgresql://localhost:5433/jade_ldap?currentSchema=public}"
+      max-size: 20
+      min-size: 2
+    devservices:
+      enabled: false
+  redis:
+    hosts: ${REDIS_URL:redis://localhost:6381}
+    devservices:
+      enabled: false
+  hibernate-orm:
+    database:
+      generation: validate
+  flyway:
+    migrate-at-start: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: false
+  smallrye-openapi:
+    enable: true
+  smallrye-health:
+    root-path: /q/health
+
+mp:
+  openapi:
+    info:
+      title: Jade LDAP API
+      version: 1.0.0
+      description: Jade 自主 LDAP Server 的协议与目录管理 API
+  jwt:
+    verify:
+      issuer: jade-ldap
+      publickey:
+        location: "${JADE_JWT_PUBLIC_KEY:META-INF/jwt-public.pem}"
+
+smallrye:
+  jwt:
+    sign:
+      key:
+        location: "${JADE_JWT_PRIVATE_KEY:META-INF/jwt-private.pem}"
+    new-token:
+      issuer: jade-ldap
+      lifetime: 7200
+
+jade:
+  jwt:
+    secret: "${JADE_JWT_SECRET:dev-only-change-me-in-prod-min-32-bytes-required!!}"
+    expire-seconds: "${JADE_JWT_EXPIRE_SECONDS:7200}"
+    issuer: "${JADE_JWT_ISSUER:jade-ldap}"
+  crypto:
+    master-key: "${JADE_CRYPTO_MASTER_KEY:dev-only-aes-key-32-bytes-required-please!!}"
+  ldap:
+    server:
+      enabled: "${LDAP_ENABLED:true}"
+      listen-address: "${LDAP_LISTEN_ADDRESS:0.0.0.0}"
+      port: "${LDAP_PORT:1389}"
+      base-dn: "${LDAP_BASE_DN:dc=jade,dc=local}"
+      admin-dn: "${LDAP_ADMIN_DN:cn=admin,dc=jade,dc=local}"
+      admin-password: "${LDAP_ADMIN_PASSWORD:local-dev-admin-password}"
+      data-file: "${LDAP_DATA_FILE:jade-ldap/data/directory.ldif}"
+      max-connections: "${LDAP_MAX_CONNECTIONS:500}"
+      tls:
+        enabled: "${LDAPS_ENABLED:false}"
+        port: "${LDAPS_PORT:1636}"
+        key-store-path: "${LDAPS_KEY_STORE_PATH:}"
+        key-store-password: "${LDAPS_KEY_STORE_PASSWORD:}"
+        self-signed: "${LDAPS_SELF_SIGNED:false}"
+        start-tls-enabled: "${LDAP_STARTTLS_ENABLED:false}"
+        certificate-reload-seconds: "${LDAP_CERTIFICATE_RELOAD_SECONDS:30}"
+      security:
+        max-failed-binds: "${LDAP_MAX_FAILED_BINDS:5}"
+        lock-seconds: "${LDAP_LOCK_SECONDS:300}"
+        password-min-length: "${LDAP_PASSWORD_MIN_LENGTH:12}"
+        failure-window-seconds: "${LDAP_FAILURE_WINDOW_SECONDS:300}"
+        audit-retention-days: "${LDAP_AUDIT_RETENTION_DAYS:90}"
+      storage:
+        sync-interval-millis: "${LDAP_STORAGE_SYNC_INTERVAL_MILLIS:1000}"
+
+"%prod":
+  jade:
+    jwt:
+      secret: "${JADE_JWT_SECRET}"
+      expire-seconds: "${JADE_JWT_EXPIRE_SECONDS}"
+      issuer: "${JADE_JWT_ISSUER}"
+    crypto:
+      master-key: "${JADE_CRYPTO_MASTER_KEY}"
+    ldap:
+      server:
+        admin-password: "${LDAP_ADMIN_PASSWORD}"

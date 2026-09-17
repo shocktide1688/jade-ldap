@@ -1,0 +1,158 @@
+# =====================================================
+# Jade Platform · 一键起全部服务
+# =====================================================
+# 用法:
+#   docker compose up -d                    # 后台起所有
+#   docker compose logs -f jade-demo         # 看 demo 日志
+#   docker compose ps                        # 看哪些在跑
+#   docker compose down                      # 停(保留 pgdata/redisdata)
+#   docker compose down -v                   # 停 + 删数据卷
+#
+# 默认起 5 个服务:
+#   postgres    5432   jade_demo + jade_admin + jade + jade_test
+#   redis       6380
+#   jade-admin   8081  GHCR image, 8081→8080
+#   jade-demo    8080  GHCR image, 8080→8080
+#   jade-frontend 5173  GHCR image, 5173→80
+#   prometheus  9090   监控
+#   grafana     3001   仪表盘 (admin/admin)
+#
+# 注: jade-admin 跟 jade-demo 平级, 各自连各自的 DB, 共用 Redis
+# =====================================================
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jade-postgres
+    restart: unless-stopped
+    environment:
+      # 主库 jade (老 config 兼容), 业务库 jade_demo / jade_admin 各自独立
+      POSTGRES_DB: jade
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DATABASES: jade_demo,jade_admin,jade_test
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d jade"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: jade-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------- 后端 jade-admin (8081) ----------
+  # 独立 DB jade_admin, V4~V8 自包含
+  jade-admin:
+    image: ghcr.io/shocktide1688/jade-admin:latest
+    container_name: jade-admin
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/jade_admin?currentSchema=public
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_URL: redis://redis:6379
+      # 生产环境务必从密钥管理服务读这些值!
+      JADE_JWT_SECRET: "${JADE_JWT_SECRET:-dev-only-change-me-in-prod-min-32-bytes-required!!}"
+      JADE_JWT_EXPIRE_SECONDS: "${JADE_JWT_EXPIRE_SECONDS:-7200}"
+      JADE_JWT_ISSUER: "${JADE_JWT_ISSUER:-jade-platform}"
+      JADE_CRYPTO_MASTER_KEY: "${JADE_CRYPTO_MASTER_KEY:-dev-only-aes-key-32-bytes-required-please!!}"
+      TZ: Asia/Shanghai
+
+  # ---------- 后端 jade-demo (8080) ----------
+  # 独立 DB jade_demo, V1~V3 + jade-admin 合并的 controllers
+  jade-demo:
+    image: ghcr.io/shocktide1688/jade-demo:latest
+    container_name: jade-demo
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/jade_demo
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_URL: redis://redis:6379
+      JADE_JWT_SECRET: "${JADE_JWT_SECRET:-dev-only-change-me-in-prod-min-32-bytes-required!!}"
+      JADE_JWT_EXPIRE_SECONDS: "${JADE_JWT_EXPIRE_SECONDS:-7200}"
+      JADE_JWT_ISSUER: "${JADE_JWT_ISSUER:-jade-platform}"
+      JADE_CRYPTO_MASTER_KEY: "${JADE_CRYPTO_MASTER_KEY:-dev-only-aes-key-32-bytes-required-please!!}"
+      TZ: Asia/Shanghai
+
+  # ---------- 前端 (5173) ----------
+  jade-frontend:
+    image: ghcr.io/shocktide1688/jade-frontend:latest
+    container_name: jade-frontend
+    restart: unless-stopped
+    depends_on:
+      - jade-admin
+      - jade-demo
+    ports:
+      - "5173:80"
+    environment:
+      # 默认连 jade-admin (管理后台), 业务 API 切到 jade-demo
+      # 这俩前端在 Vite build 时通过 .env 注入, 改完要重 build 镜像
+      TZ: Asia/Shanghai
+
+  # ---------- 监控: Prometheus (9090) ----------
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: jade-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+  # ---------- 监控: Grafana (3001) ----------
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: jade-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  pgdata:
+  redisdata:
+  grafana-data:

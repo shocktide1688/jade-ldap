@@ -1,0 +1,26 @@
+# =====================================================
+# Prometheus 抓取配置
+# =====================================================
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # jade-demo 业务服务 (8080)
+  - job_name: 'jade-demo'
+    metrics_path: /q/metrics
+    static_configs:
+      - targets: ['jade-demo:8080']
+    scrape_timeout: 5s
+
+  # jade-admin 管理后台 (8081)
+  - job_name: 'jade-admin'
+    metrics_path: /q/metrics
+    static_configs:
+      - targets: ['jade-admin:8080']
+    scrape_timeout: 5s
+
+  # prometheus 自身
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

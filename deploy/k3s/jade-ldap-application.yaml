@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jade-ldap
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: http://gitea-http.cicd.svc.cluster.local:3000/reqpilot-admin/jade-ldap-gitops.git
+    targetRevision: main
+    path: apps/jade-ldap
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jade-ldap
+  syncPolicy:
+    automated:
+      enabled: true
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - PruneLast=true

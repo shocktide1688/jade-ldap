@@ -1,0 +1,56 @@
+version: '3.8'
+
+# =====================================================
+# Jade Platform · 完整监控栈
+# =====================================================
+# 启动：docker-compose -f docker-compose.monitoring.yml up -d
+# 访问：
+#   - Prometheus:     http://localhost:9090
+#   - Grafana:        http://localhost:3000 (admin/admin)
+#   - Jade metrics:   http://localhost:8080/q/metrics
+# =====================================================
+
+services:
+  # ===== Prometheus 抓取 =====
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: jade-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - quarkus_default
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+  # ===== Grafana 可视化 =====
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: jade-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: "${GF_SECURITY_ADMIN_PASSWORD:-admin}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - quarkus_default
+
+volumes:
+  grafana-storage:
+
+networks:
+  quarkus_default:
+    external: true   # 复用 docker-compose.yml 创建的 network

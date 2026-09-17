@@ -1,0 +1,319 @@
+name: CI
+
+# 全 workflow 默认最小权限
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main, develop]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # 检测哪些目录有变更
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+
+  backend:
+    needs: changes
+    if: >-
+      ${{
+        needs.changes.outputs.backend == 'true' ||
+        startsWith(github.ref, 'refs/tags/v')
+      }}
+    runs-on: ubuntu-latest
+    # 单独给 backend job 加 contents: write, 让 "Post mvn log on failure" 能贴 commit comment
+    permissions:
+      contents: write
+    env:
+      # demo 模块的 DB (生产用 jade, CI 也用 jade 让 demo 测试一致)
+      DB_URL: jdbc:postgresql://localhost:5432/jade_demo
+      # admin 模块的 DB (跟 demo 完全独立)
+      TEST_DB_URL: jdbc:postgresql://localhost:5432/jade_admin
+      QUARKUS_REDIS_HOSTS: redis://localhost:6379
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          # POSTGRES_DB 是主库 (jade-demo 用)
+          # 额外业务库 (jade_admin) + 兼容库 (jade) 由 build 前 step 用 psql 创
+          # 原因: 挂 init script volume 会把源文件 ownership 改成 root, checkout 删不动
+          POSTGRES_DB: jade_demo
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        # 不加 healthcheck (pg_isready 跟 init race, 之前坑过; GHA 默认等端口 listen)
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+      - name: Create additional databases
+        # 官方 postgres 镜像不支持 POSTGRES_MULTIPLE_DATABASES, 挂 init volume 又会让 checkout 删不动
+        # 用 postgresql-client 直接建库最稳
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          PGPASSWORD=postgres psql -h localhost -U postgres -d jade_demo -c "CREATE DATABASE jade_admin;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d jade_demo -c "CREATE DATABASE jade;"
+      - name: Build & Test
+        run: |
+          cd backend
+          # 跑单测 + 编译所有模块
+          # 集成测试需要 PG/Redis，本地 CI 用 testcontainers
+          mvn -B clean verify -DskipITs -Dmaven.test.failure.ignore=false 2>&1 | tee /tmp/mvn-build.log
+          MAVEN_EXIT=${PIPESTATUS[0]}
+          echo "maven exit code: $MAVEN_EXIT"
+          # 出错时把 tail 写到 step log, 方便 annotation
+          if [ $MAVEN_EXIT -ne 0 ]; then
+            echo "::group::maven build log (tail 200)"
+            tail -200 /tmp/mvn-build.log
+            echo "::endgroup::"
+            exit $MAVEN_EXIT
+          fi
+      - name: Post mvn log to commit on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const log = fs.readFileSync('/tmp/mvn-build.log', 'utf8');
+            // grab the FAILURES section + last 100 lines for compactness
+            const tail = log.split('\n').slice(-200).join('\n');
+            const failuresIdx = log.indexOf('Failed tests:');
+            const failSection = failuresIdx >= 0 ? log.substring(failuresIdx, failuresIdx + 4000) : '';
+            const body = `## mvn build failed\n\n\`\`\`\n${tail.slice(0, 30000)}\n\`\`\`` +
+              (failSection ? `\n\n### Failed tests\n\`\`\`\n${failSection.slice(0, 6000)}\n\`\`\`` : '');
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: body
+            });
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/**/target/site/jacoco/
+          if-no-files-found: ignore
+
+  frontend:
+    needs: changes
+    if: >-
+      ${{
+        needs.changes.outputs.frontend == 'true' ||
+        startsWith(github.ref, 'refs/tags/v')
+      }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        # 用 npm install 而不是 npm ci, 避免 lockfile 跟 package.json 不同步时失败
+        # --legacy-peer-deps: 兼容 unplugin-auto-import / pinia-plugin-persistedstate 的 peer dep 范围
+        run: cd frontend && npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Type check
+        run: cd frontend && npm run type-check
+      - name: Build
+        run: cd frontend && npm run build
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+  publish:
+    # 关键修复: 不再 depends on frontend job
+    # 原因: publish 内的 frontend docker build 是从源码 docker build, 不用 frontend job 的 artifact
+    # 之前 frontend 被 paths-filter skip 后, publish 也跟着 skipped (needs 不满足)
+    needs: [changes, backend]
+    # publish 整体在 main 或 tag 上跑
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          # docker-container snapshotter 加速 native build (支持 mount)
+          # 默认 driver 是 docker, 不支持 mount, GraalVM 会失败
+          driver-opts: image=moby/buildkit:latest
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-buildx-
+      # ============ Backend: Native Image (主推) ============
+      - name: Extract native image metadata
+        id: meta-native
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/shocktide1688/jade-demo
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest-native,enable={{is_default_branch}}
+      - name: Build and push NATIVE image
+        # 单边改动也跑: backend 改了 OR tag
+        if: needs.changes.outputs.backend == 'true' || startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/jade-demo/Dockerfile.native
+          push: true
+          tags: ${{ steps.meta-native.outputs.tags }}
+          labels: ${{ steps.meta-native.outputs.labels }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+      # ============ Backend: JVM Image (兼容) ============
+      - name: Extract JVM image metadata
+        id: meta-jvm
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/shocktide1688/jade-demo-jvm
+          tags: |
+            type=ref,event=branch,suffix=-jvm
+            type=ref,event=tag,suffix=-jvm
+            type=sha,suffix=-jvm
+            type=raw,value=latest-jvm,enable={{is_default_branch}}
+      - name: Build and push JVM image
+        # 单边改动也跑: backend 改了 OR tag
+        if: needs.changes.outputs.backend == 'true' || startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/jade-demo/Dockerfile
+          push: true
+          tags: ${{ steps.meta-jvm.outputs.tags }}
+          labels: ${{ steps.meta-jvm.outputs.labels }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+      # ============ Backend: jade-admin Native Image ============
+      # jade-admin 现在跟 jade-demo 平级, 独立可启动应用
+      - name: Extract jade-admin native image metadata
+        id: meta-admin-native
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/shocktide1688/jade-admin
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest-native,enable={{is_default_branch}}
+      - name: Build and push jade-admin NATIVE image
+        if: needs.changes.outputs.backend == 'true' || startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/jade-admin/Dockerfile.native
+          push: true
+          tags: ${{ steps.meta-admin-native.outputs.tags }}
+          labels: ${{ steps.meta-admin-native.outputs.labels }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+      # ============ Backend: jade-admin JVM Image ============
+      - name: Extract jade-admin JVM image metadata
+        id: meta-admin-jvm
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/shocktide1688/jade-admin-jvm
+          tags: |
+            type=ref,event=branch,suffix=-jvm
+            type=ref,event=tag,suffix=-jvm
+            type=sha,suffix=-jvm
+            type=raw,value=latest-jvm,enable={{is_default_branch}}
+      - name: Build and push jade-admin JVM image
+        if: needs.changes.outputs.backend == 'true' || startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/jade-admin/Dockerfile
+          push: true
+          tags: ${{ steps.meta-admin-jvm.outputs.tags }}
+          labels: ${{ steps.meta-admin-jvm.outputs.labels }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+      # ============ Frontend ============
+      - name: Extract frontend Docker metadata
+        id: frontend-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/shocktide1688/jade-frontend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Build and push frontend image
+        # 单边改动也跑: frontend 改了 OR tag
+        if: needs.changes.outputs.frontend == 'true' || startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ steps.frontend-meta.outputs.tags }}
+          labels: ${{ steps.frontend-meta.outputs.labels }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+  release:
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

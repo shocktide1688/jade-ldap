@@ -1,0 +1,26 @@
+# ========================================
+# CODEOWNERS — 自动指派 reviewer
+# ========================================
+
+# 默认所有人
+*                               @jade/maintainers
+
+# 后端
+/backend/**                     @jade/backend-team
+/backend/jade-demo/**           @jade/backend-team @jade/frontend-team
+
+# 前端
+/frontend/**                    @jade/frontend-team
+
+# 脚手架
+/scaffold/**                    @jade/devx-team
+
+# 文档
+/docs/**                        @jade/maintainers
+/ARCHITECTURE.md                @jade/maintainers
+/STRUCTURE.md                   @jade/maintainers
+/README.md                      @jade/maintainers
+
+# CI / 部署
+/.github/**                     @jade/devx-team
+/docker-compose.yml             @jade/devx-team

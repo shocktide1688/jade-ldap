@@ -1,0 +1,80 @@
+# =====================================================
+# Jade Platform · Native Image · jade-admin
+# 完全在容器内构建，不需要宿主机装 GraalVM
+# 用法（在 backend/ 目录下）：
+#   docker build -f jade-admin/Dockerfile.native -t jade-admin:native .
+#   docker run --rm -p 8080:8080 --cpus=4 --memory=4g jade-admin:native
+# =====================================================
+
+# ---------- Stage 1: Native Builder ----------
+FROM m.daocloud.io/ghcr.io/graalvm/native-image-community:25 AS builder
+
+ENTRYPOINT []
+USER root
+WORKDIR /build
+
+# 装系统工具
+RUN microdnf install -y --disablerepo="*" --enablerepo=ol10_baseos_latest \
+        tar gzip findutils \
+    && microdnf clean all
+
+# GraalVM 25.0.2 + Java 25
+ENV JAVA_HOME=/usr/lib64/graalvm/graalvm-community-java25
+ENV PATH=$JAVA_HOME/bin:$JAVA_HOME/lib/svm/bin:$PATH
+
+# 下个 Maven 3.9.6
+ARG MAVEN_VERSION=3.9.6
+RUN curl -fsSL -o /tmp/maven.tar.gz \
+        https://maven.aliyun.com/repository/public/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
+    && tar -xzf /tmp/maven.tar.gz -C /opt \
+    && ln -s /opt/apache-maven-${MAVEN_VERSION}/bin/mvn /usr/local/bin/mvn \
+    && rm /tmp/maven.tar.gz \
+    && mvn -version
+
+# 阿里云 Maven 镜像
+COPY jade-demo/settings-docker.xml /root/.m2/settings.xml
+
+# 拷贝 pom（最大化缓存）
+COPY pom.xml ./
+COPY jade-dependencies/pom.xml jade-dependencies/
+COPY jade-common/pom.xml jade-common/
+COPY jade-web/pom.xml jade-web/
+COPY jade-security/pom.xml jade-security/
+COPY jade-log/pom.xml jade-log/
+COPY jade-redis/pom.xml jade-redis/
+COPY jade-oss/pom.xml jade-oss/
+COPY jade-codegen/pom.xml jade-codegen/
+COPY jade-admin/pom.xml jade-admin/
+
+# 预下载依赖
+RUN mvn -B -q -DskipTests dependency:go-offline || true
+
+# 拷贝源码并构建 native
+COPY . .
+RUN mvn -B -DskipTests \
+        -pl jade-admin -am \
+        clean package \
+        -Dnative \
+        -Dquarkus.native.enabled=true \
+        -Dquarkus.native.container-build=false
+
+RUN ls -lh /build/jade-admin/target/jade-admin-*-runner
+
+# ---------- Stage 2: 运行时镜像 ----------
+FROM debian:bookworm-slim
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates libstdc++6 zlib1g libgcc1 wget \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /build/jade-admin/target/jade-admin-*-runner /app/jade-admin
+RUN chmod +x /app/jade-admin
+
+EXPOSE 8080
+
+ENV JAVA_OPTS=""
+ENTRYPOINT ["/app/jade-admin"]
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
+    CMD wget -qO- http://localhost:8080/q/health/live || exit 1

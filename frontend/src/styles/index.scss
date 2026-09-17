@@ -1,0 +1,442 @@
+/* ============================================================
+   Jade Platform · 主题系统
+   三模式：light / dark / system（跟随系统）
+   - :root 为浅色令牌，html.dark 覆盖为深色令牌
+   - 组件一律引用语义变量，禁止硬编码颜色
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  --jade-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code',
+    ui-monospace, Menlo, Consolas, monospace;
+  --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+
+  /* 品牌色：浅色底用更深的玉绿保证对比度 */
+  --jade-primary: #007349;
+  --jade-primary-light: #005c3a;
+  --jade-primary-dark: #005c3a;
+  --jade-cyan: #0e8fa3;
+  --jade-violet: #6d3fc4;
+
+  /* 表面层 */
+  --jade-bg: #f2f4f8;
+  --jade-bg-soft: #ffffff;
+  --jade-card: rgba(255, 255, 255, 0.88);
+  --jade-card-solid: #ffffff;
+  --jade-panel-bg: rgba(255, 255, 255, 0.82);
+  --jade-surface: rgba(255, 255, 255, 0.82);
+  --jade-input-bg: rgba(15, 23, 42, 0.05);
+  --jade-border: rgba(15, 23, 42, 0.12);
+  --jade-border-light: rgba(15, 23, 42, 0.07);
+
+  /* 文字 */
+  --jade-text: #1f2937;
+  --jade-text-secondary: #4b5563;
+  --jade-text-dim: #5f6b7d;
+
+  /* 发光 / 阴影 */
+  --jade-glow: rgba(0, 168, 107, 0.28);
+  --jade-glow-soft: rgba(0, 168, 107, 0.12);
+  --jade-shadow-panel: 0 18px 60px rgba(15, 23, 42, 0.12);
+
+  /* 装饰 */
+  --jade-grid-line: rgba(15, 23, 42, 0.05);
+  --jade-aurora-opacity: 0.28;
+  --jade-scanline: rgba(0, 168, 107, 0.05);
+
+  /* 侧边栏跟随主题 */
+  --jade-aside-grad-a: #ffffff;
+  --jade-aside-grad-b: #f6f8fb;
+  --jade-aside-border: rgba(15, 23, 42, 0.1);
+  --jade-aside-text: #4b5563;
+  --jade-aside-text-dim: #5f6b7d;
+  --jade-aside-active: #007349;
+  --jade-aside-hover-bg: rgba(15, 23, 42, 0.05);
+  --jade-aside-glow: rgba(0, 168, 107, 0.08);
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --jade-primary: #00e08a;
+  --jade-primary-light: #4dffb0;
+  --jade-primary-dark: #00b871;
+  --jade-cyan: #22d3ee;
+  --jade-violet: #8b5cf6;
+
+  --jade-bg: #070b14;
+  --jade-bg-soft: #0b1120;
+  --jade-card: rgba(17, 26, 44, 0.72);
+  --jade-card-solid: #111a2c;
+  --jade-panel-bg: rgba(13, 20, 36, 0.78);
+  --jade-surface: rgba(10, 16, 31, 0.75);
+  --jade-input-bg: rgba(148, 163, 184, 0.06);
+  --jade-border: rgba(148, 163, 184, 0.14);
+  --jade-border-light: rgba(148, 163, 184, 0.08);
+
+  --jade-text: #e6edf7;
+  --jade-text-secondary: #9aa5ba;
+  --jade-text-dim: #7d8aa5;
+
+  --jade-glow: rgba(0, 224, 138, 0.35);
+  --jade-glow-soft: rgba(0, 224, 138, 0.15);
+  --jade-shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.55);
+
+  --jade-grid-line: rgba(148, 163, 184, 0.05);
+  --jade-aurora-opacity: 0.5;
+  --jade-scanline: rgba(0, 224, 138, 0.045);
+
+  /* 侧边栏跟随主题 */
+  --jade-aside-grad-a: #0a101f;
+  --jade-aside-grad-b: #070b14;
+  --jade-aside-border: rgba(148, 163, 184, 0.14);
+  --jade-aside-text: #9aa5ba;
+  --jade-aside-text-dim: #7d8aa5;
+  --jade-aside-active: #00e08a;
+  --jade-aside-hover-bg: rgba(148, 163, 184, 0.08);
+  --jade-aside-glow: rgba(0, 224, 138, 0.09);
+
+  /* Element Plus 暗色变量 → 玉绿主题 */
+  --el-color-primary: var(--jade-primary);
+  --el-bg-color: var(--jade-bg-soft);
+  --el-bg-color-overlay: #131d31;
+  --el-text-color-primary: var(--jade-text);
+  --el-text-color-regular: var(--jade-text);
+  --el-text-color-secondary: var(--jade-text-secondary);
+  --el-border-color: var(--jade-border);
+  --el-border-color-light: var(--jade-border);
+  --el-border-color-lighter: var(--jade-border-light);
+  --el-fill-color-blank: transparent;
+  --el-fill-color-light: var(--jade-input-bg);
+}
+
+/* 浅色模式下 Element 也对齐主题令牌
+   warning/danger 加深：Element 默认琥珀/浅红在白底上只有 2~3:1 */
+:root:not(.dark) {
+  --el-color-primary: var(--jade-primary);
+  --el-text-color-primary: var(--jade-text);
+  --el-text-color-regular: var(--jade-text);
+  --el-text-color-secondary: var(--jade-text-secondary);
+  --el-text-color-placeholder: var(--jade-text-dim);
+  --el-text-color-disabled: var(--jade-text-dim);
+  --el-color-warning: #8a5f00;
+  --el-color-danger: #c0392b;
+}
+
+html, body {
+  transition: background-color 0.3s ease;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: var(--jade-bg);
+  color: var(--jade-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(0, 224, 138, 0.3);
+  color: #fff;
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--jade-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--jade-primary); }
+
+/* ============================================================
+   玻璃拟态卡片（全站 el-card 统一升级）
+   ============================================================ */
+.el-card {
+  background: var(--jade-card);
+  border: 1px solid var(--jade-border);
+  border-radius: 14px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  /* 顶部一线高光，模拟光源 */
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.el-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  pointer-events: none;
+}
+
+:root:not(.dark) .el-card::before { opacity: 0.4; }
+
+.el-card:hover {
+  border-color: color-mix(in srgb, var(--jade-primary) 35%, transparent);
+  box-shadow: 0 8px 32px var(--jade-glow-soft);
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--jade-border-light);
+  color: var(--jade-text);
+  font-weight: 600;
+}
+
+/* ---------- 表格 ---------- */
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--jade-input-bg);
+  --el-table-header-text-color: var(--jade-text-secondary);
+  --el-table-row-hover-bg-color: var(--jade-glow-soft);
+  --el-table-border-color: var(--jade-border-light);
+  background: transparent;
+}
+
+.el-table .cell {
+  white-space: nowrap;
+}
+
+/* 固定列必须不透明：透明底会让下层滚动内容从固定列里透出来（错节元凶） */
+/* Element 的规则是 background:inherit（继承 tr 透明底）且特异性 (0,3,1)，
+   这里用更高特异性给固定列不透明底，滚动的下层内容才不会透出来 */
+.el-table .el-table__body-wrapper tr td.el-table-fixed-column--left,
+.el-table .el-table__body-wrapper tr td.el-table-fixed-column--right {
+  background: var(--jade-card-solid);
+}
+
+.el-table .el-table__body-wrapper tr:hover td.el-table-fixed-column--left,
+.el-table .el-table__body-wrapper tr:hover td.el-table-fixed-column--right {
+  background: var(--jade-bg-soft);
+}
+
+.el-table .el-table__header-wrapper tr th.el-table-fixed-column--left,
+.el-table .el-table__header-wrapper tr th.el-table-fixed-column--right {
+  background: var(--jade-input-bg);
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+/* ---------- 对话框 / 消息框 ---------- */
+.el-dialog, .el-message-box {
+  background: var(--jade-card-solid);
+  border: 1px solid var(--jade-border);
+  border-radius: 14px;
+  box-shadow: var(--jade-shadow-panel);
+}
+
+.el-dialog__title, .el-message-box__title { color: var(--jade-text); }
+
+/* ---------- 输入框 ---------- */
+.el-input__wrapper, .el-textarea__inner {
+  background: var(--jade-input-bg);
+  box-shadow: 0 0 0 1px var(--jade-border) inset;
+  transition: box-shadow 0.2s ease;
+}
+
+.el-input__wrapper:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--jade-primary) 40%, transparent) inset; }
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--jade-primary) inset, 0 0 16px var(--jade-glow-soft) !important;
+}
+
+/* ---------- 按钮 ---------- */
+.el-button--primary {
+  --el-button-bg-color: transparent;
+  --el-button-border-color: transparent;
+  --el-button-hover-bg-color: transparent;
+  --el-button-hover-border-color: transparent;
+  --el-button-active-bg-color: transparent;
+  --el-button-active-border-color: transparent;
+  --el-button-text-color: #04120b;
+  --el-button-hover-text-color: #04120b;
+  background-image: linear-gradient(135deg, #00e08a, #00c4a0 55%, #22d3ee);
+  background-size: 160% 160%;
+  box-shadow: 0 4px 20px var(--jade-glow);
+  transition: background-position 0.35s ease, box-shadow 0.25s ease, transform 0.15s ease;
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+  background-position: 90% 50%;
+  box-shadow: 0 6px 28px var(--jade-glow);
+}
+
+.el-button--primary:active { transform: translateY(1px) scale(0.99); }
+
+.el-button--primary.is-link,
+.el-button--primary.is-text,
+.el-button.is-link {
+  background-image: none;
+  box-shadow: none;
+  --el-button-text-color: var(--jade-primary);
+  --el-button-hover-text-color: var(--jade-primary-light);
+}
+
+.el-button.is-text { background-image: none; box-shadow: none; }
+
+.el-button--default {
+  background: var(--jade-input-bg);
+  border-color: var(--jade-border);
+  color: var(--jade-text);
+}
+.el-button--default:hover {
+  border-color: color-mix(in srgb, var(--jade-primary) 45%, transparent);
+  color: var(--jade-primary);
+  background: var(--jade-glow-soft);
+}
+
+/* ---------- 标签 / 分页 / 面包屑 ---------- */
+.el-tag {
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+}
+
+.el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-button-disabled-bg-color: transparent;
+}
+
+.el-breadcrumb__inner { color: var(--jade-text-secondary) !important; }
+.el-breadcrumb__inner a { color: var(--jade-text-dim) !important; }
+.el-breadcrumb__inner a:hover { color: var(--jade-primary) !important; }
+
+/* ---------- 下拉 / 弹层 ---------- */
+.el-popper.is-light {
+  background: var(--jade-card-solid);
+  border: 1px solid var(--jade-border);
+}
+.el-popper.is-light .el-popper__arrow::before {
+  background: var(--jade-card-solid);
+  border-color: var(--jade-border);
+}
+.el-dropdown-menu__item:not(.is-disabled):hover,
+.el-select-dropdown__item.is-hovering {
+  background: var(--jade-glow-soft);
+  color: var(--jade-primary);
+}
+
+/* ============================================================
+   科技感工具类
+   ============================================================ */
+
+/* 霓虹渐变文字 */
+.neon-text {
+  background: linear-gradient(120deg, var(--jade-primary) 10%, var(--jade-cyan) 55%, var(--jade-violet) 95%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: neon-flow 6s linear infinite;
+}
+
+@keyframes neon-flow {
+  to { background-position: 200% center; }
+}
+
+/* 等宽数据字体 */
+.mono { font-family: var(--jade-mono, 'SF Mono', 'JetBrains Mono', ui-monospace, Menlo, monospace); font-variant-numeric: tabular-nums; }
+
+/* 网格背景（科技坐标系） */
+.grid-bg {
+  background-image:
+    linear-gradient(var(--jade-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--jade-grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* 极光光斑（配合 .aurora > i 使用，GPU 友好：只动 transform/opacity） */
+.aurora { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: var(--jade-aurora-opacity); }
+.aurora i {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+.aurora i:nth-child(1) {
+  width: 480px; height: 480px;
+  background: radial-gradient(circle, rgba(0, 224, 138, 0.35), transparent 70%);
+  top: -140px; left: -100px;
+  animation: drift-a 18s ease-in-out infinite alternate;
+}
+.aurora i:nth-child(2) {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.28), transparent 70%);
+  bottom: -120px; right: -80px;
+  animation: drift-b 22s ease-in-out infinite alternate;
+}
+.aurora i:nth-child(3) {
+  width: 360px; height: 360px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.22), transparent 70%);
+  top: 40%; left: 55%;
+  animation: drift-c 26s ease-in-out infinite alternate;
+}
+
+@keyframes drift-a { to { transform: translate(120px, 90px) scale(1.15); } }
+@keyframes drift-b { to { transform: translate(-100px, -70px) scale(1.1); } }
+@keyframes drift-c { to { transform: translate(-80px, 60px) scale(0.9); } }
+
+/* 脉冲呼吸点（在线状态指示） */
+.pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--jade-primary);
+  box-shadow: 0 0 8px var(--jade-glow);
+  display: inline-block;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--jade-glow); }
+  50% { opacity: 0.55; box-shadow: 0 0 16px var(--jade-glow); }
+}
+
+/* 数字滚动出现 */
+@keyframes count-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 卡片交错入场（配合 style="--d: <n>ms" 使用） */
+.stagger-in {
+  opacity: 0;
+  animation: count-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--d, 0ms);
+}
+
+/* ============================================================
+   多端适配
+   ============================================================ */
+
+/* 弹窗在任何视口都不溢出（页面里写死的 width 只作为理想宽度） */
+.el-dialog, .el-message-box {
+  max-width: calc(100vw - 24px);
+}
+
+/* 页面工具栏：小屏允许换行（各页 scoped 的 .toolbar 共用此规则） */
+.toolbar {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+/* ============================================================
+   无障碍：尊重系统减少动态效果偏好
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .stagger-in { opacity: 1; }
+}
