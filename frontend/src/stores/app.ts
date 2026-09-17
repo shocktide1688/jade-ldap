@@ -40,8 +40,9 @@ export const useAppStore = defineStore('app', () => {
     return next
   }
 
-  function nextThemeName(): string {
-    return theme.value === 'light' ? '黑夜' : theme.value === 'dark' ? '跟随系统' : '白天'
+  /** 当前主题的中文名（与按钮图标一致） */
+  function themeName(): string {
+    return theme.value === 'light' ? '白天' : theme.value === 'dark' ? '黑夜' : '跟随系统'
   }
 
   function applyTheme() {
@@ -68,6 +69,6 @@ export const useAppStore = defineStore('app', () => {
     theme,
     toggleSidebar,
     cycleTheme,
-    nextThemeName,
+    themeName,
   }
 })

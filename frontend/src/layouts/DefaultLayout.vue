@@ -274,7 +274,7 @@ onUnmounted(() => {
           </el-breadcrumb>
         </div>
         <div class="header-right">
-          <el-tooltip :content="`切换主题：${appStore.nextThemeName()}`" placement="bottom">
+          <el-tooltip :content="`主题：${appStore.themeName()}（点击切换）`" placement="bottom">
             <el-button text class="icon-btn" @click="appStore.cycleTheme">
               <MorphIcon
                 :icon="themeIcon"
