@@ -69,7 +69,7 @@ async function handleReset() {
 }
 
 // ---------- 验证码：后台可开关，失败次数达阈值后强制 ----------
-const captcha = reactive({ enabled: false, required: false, id: '', svg: '' })
+const captcha = reactive({ enabled: false, required: false, id: '', image: '' })
 
 async function refreshCaptchaStatus() {
   try {
@@ -81,7 +81,7 @@ async function refreshCaptchaStatus() {
     const d = res.data.data
     captcha.enabled = !!d.enabled
     captcha.required = !!d.required
-    if (captcha.required && !captcha.svg) await loadCaptchaImage()
+    if (captcha.required && !captcha.image) await loadCaptchaImage()
   } catch {
     // 后端旧版本无此接口：视为无验证码
     captcha.enabled = false
@@ -93,7 +93,7 @@ async function loadCaptchaImage() {
   try {
     const res: any = await request({ url: '/api/v1/auth/captcha/new', method: 'GET' })
     captcha.id = res.data.data.captchaId
-    captcha.svg = res.data.data.svg
+    captcha.image = res.data.data.image
     form.captchaCode = ''
   } catch { /* 验证码未启用 */ }
 }
@@ -195,11 +195,12 @@ async function handleLogin() {
                 maxlength="4"
                 @keyup.enter="handleLogin"
               />
-              <div
+              <img
                 class="captcha-img"
                 title="点击刷新"
+                alt="验证码"
+                :src="captcha.image"
                 @click="loadCaptchaImage"
-                v-html="captcha.svg"
               />
             </div>
           </el-form-item>

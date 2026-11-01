@@ -40,6 +40,9 @@ public class AuthController {
     CaptchaService captchaService;
 
     @Inject
+    com.jade.redis.limiter.RateLimiter rateLimiter;
+
+    @Inject
     PasswordResetService passwordResetService;
 
     @Inject
@@ -70,10 +73,14 @@ public class AuthController {
     @GET
     @Path("/captcha/new")
     @PermitAll
-    @Operation(summary = "生成验证码", description = "返回 captchaId 与 SVG 图片；后台未开启验证码时返回 4004")
-    public R<CaptchaService.CaptchaImage> newCaptcha() {
+    @Operation(summary = "生成验证码", description = "返回 captchaId 与 PNG 图片；后台未开启验证码时返回 4004")
+    public R<CaptchaService.CaptchaImage> newCaptcha(@Context HttpHeaders headers) {
         if (!captchaService.isEnabled()) {
             return R.fail(4004, "验证码未启用");
+        }
+        // IP 限流: 30 次/分钟, 防刷图/资源滥用 (Redis 故障 fail-open)
+        if (!rateLimiter.tryAcquire("captcha:" + clientIp(headers), 30, 60)) {
+            return R.fail(429, "获取验证码过于频繁, 请稍后再试");
         }
         return R.ok(captchaService.generate());
     }

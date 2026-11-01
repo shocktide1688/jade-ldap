@@ -57,6 +57,18 @@ class InMemoryTtlStore {
         store.remove(key);
     }
 
+    /** 原子读取并删除（语义同 Redis GETDEL），保证一次性消费不被并发复用 */
+    public synchronized String getdel(String key) {
+        Entry e = store.remove(key);
+        if (e == null) {
+            return null;
+        }
+        if (e.expireAtMillis() < System.currentTimeMillis()) {
+            return null;
+        }
+        return e.value();
+    }
+
     private void purgeIfNeeded() {
         if (store.size() < MAX_ENTRIES) {
             return;
