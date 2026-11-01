@@ -17,6 +17,21 @@ import static org.hamcrest.Matchers.notNullValue;
 class AuthControllerTest {
 
     @Test
+    void garbage_captcha_rejected_even_below_threshold() {
+        // enabled=false 未达阈值, 但带了验证码字段就必须认真校验(残留验证码行场景)
+        given()
+                .contentType(io.restassured.http.ContentType.JSON)
+                .body("""
+                        {"username":"admin","password":"admin123","captchaId":"stale-id","captchaCode":"ZZZZ"}
+                        """)
+                .when()
+                .post("/api/v1/auth/login")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(1102));
+    }
+
+    @Test
     void login_success() {
         given()
                 .contentType(ContentType.JSON)

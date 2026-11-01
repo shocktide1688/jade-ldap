@@ -68,10 +68,17 @@ public class AuthService {
     public R<LoginResponse> login(LoginRequest req, String ip) {
         Timer.Sample sample = Timer.start();
         try {
-            // 0) 验证码：开关开启且该用户名失败次数达到阈值时强制校验（密码验证前，防爆破）
+            // 0) 验证码：开关开启且失败次数达到阈值时强制校验（密码验证前，防爆破）。
+            //    未达阈值但客户端带了验证码（页面残留的验证码行）也认真校验——
+            //    计数窗口过期/重启后计数清零, 残留的验证码行不能"随便输都放行"
             if (captchaService.isRequired(req.getUsername())
-                    && !captchaService.verify(req.getCaptchaId(), req.getCaptchaCode())) {
+                    && (isBlank(req.getCaptchaId()) || isBlank(req.getCaptchaCode()))) {
                 throw new BizException(ResultCode.CAPTCHA_ERROR, "验证码错误");
+            }
+            if (!isBlank(req.getCaptchaId()) || !isBlank(req.getCaptchaCode())) {
+                if (!captchaService.verify(req.getCaptchaId(), req.getCaptchaCode())) {
+                    throw new BizException(ResultCode.CAPTCHA_ERROR, "验证码错误");
+                }
             }
 
             // 1) 查用户
@@ -133,6 +140,10 @@ public class AuthService {
             roleCodes.add("user");
         }
         return roleCodes;
+    }
+
+    private boolean isBlank(String v) {
+        return v == null || v.isBlank();
     }
 
     private boolean verifyPassword(SysUser user, String rawPassword) {

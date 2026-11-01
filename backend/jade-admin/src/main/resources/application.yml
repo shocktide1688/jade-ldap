@@ -5,12 +5,17 @@ quarkus:
 
   http:
     port: 8080
-    # CORS 用自定义 CorsFilter
+    # CORS: Quarkus 内置 Vert.x 层过滤器 (3.33+ 正常生效)。
+    # 必须留在 HTTP 层: 安全层 401 也会带 CORS 头, 否则浏览器把过期 token 的
+    # 401 拦截成 Network Error, 前端"登录已过期"提示失效
     cors:
-      origins: http://localhost:5173
+      enabled: "${JADE_CORS_ENABLED:true}"
+      origins: "${JADE_CORS_ORIGINS:http://localhost:5173}"
       methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
       headers: accept,authorization,content-type,x-requested-with,x-trace-id,x-idempotency-key
       exposed-headers: x-trace-id
+      access-control-max-age: 3600
+      access-control-allow-credentials: true
 
   datasource:
     db-kind: postgresql
@@ -111,8 +116,6 @@ jade:
     issuer: "${JADE_JWT_ISSUER:jade-platform}"
   crypto:
     master-key: "${JADE_CRYPTO_MASTER_KEY:dev-only-aes-key-32-bytes-required-please!!}"
-  cors:
-    enabled: "${JADE_CORS_ENABLED:true}"
 
 "%dev":
   quarkus:

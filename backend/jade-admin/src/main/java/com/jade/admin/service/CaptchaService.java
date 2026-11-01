@@ -7,6 +7,7 @@ import io.quarkus.redis.datasource.value.SetArgs;
 import io.quarkus.redis.datasource.value.ValueCommands;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -17,7 +18,9 @@ import java.util.UUID;
  *
  * 设计要点：
  *  - SVG 纯字符串生成，不依赖 AWT（GraalVM native image 安全）
- *  - 答案存 Redis，TTL 120s，一次性（校验即删）
+ *  - 答案/失败计数存 Redis，TTL 到期，一次性（校验即删）；
+ *    进程内始终双写，Redis 不可用时自动降级为进程内（单机语义：重启归零、
+ *    多实例各自计数），功能不中断；校验不过即拒绝，不放行
  *  - 失败计数按用户名维度，TTL 15min，成功登录清零
  *  - 开关/阈值来自 sys_config（sys.captcha.enabled / sys.captcha.threshold），
  *    每次登录实时读取，后台改配置立即生效
@@ -37,7 +40,15 @@ public class CaptchaService {
             "#00a86b", "#22d3ee", "#8b5cf6", "#f59e0b", "#ec4899", "#38bdf8",
     };
 
+    private static final Logger LOG = Logger.getLogger(CaptchaService.class);
+
+    /** Redis 故障后熔断时长，到期重试 */
+    private static final long REDIS_RETRY_MS = 30_000;
+
     private final SecureRandom random = new SecureRandom();
+    private final InMemoryTtlStore memory = new InMemoryTtlStore();
+    /** 0 = Redis 可用；否则为下次允许重试 Redis 的时间戳 */
+    private volatile long redisRetryAt;
 
     @Inject
     RedisDataSource redis;
@@ -81,7 +92,15 @@ public class CaptchaService {
     public CaptchaImage generate() {
         String code = randomCode(4);
         String id = UUID.randomUUID().toString().replace("-", "");
-        strCmd().set(CAPTCHA_KEY_PREFIX + id, code.toLowerCase(), new SetArgs().ex(CAPTCHA_TTL));
+        String key = CAPTCHA_KEY_PREFIX + id;
+        memory.setex(key, CAPTCHA_TTL.toSeconds(), code.toLowerCase());
+        if (redisAvailable()) {
+            try {
+                strCmd().set(key, code.toLowerCase(), new SetArgs().ex(CAPTCHA_TTL));
+            } catch (Exception e) {
+                markRedisDown(e);
+            }
+        }
         return new CaptchaImage(id, toSvg(code));
     }
 
@@ -91,16 +110,42 @@ public class CaptchaService {
             return false;
         }
         String key = CAPTCHA_KEY_PREFIX + captchaId;
-        String expected = strCmd().get(key);
+        String expected = null;
+        if (redisAvailable()) {
+            try {
+                expected = strCmd().get(key);
+            } catch (Exception e) {
+                markRedisDown(e);
+            }
+        }
+        if (expected == null) {
+            expected = memory.get(key); // Redis 没查到（含降级期）再看进程内
+        }
         // 先删后比，无论对错都作废，防重放
-        redis.key().del(key);
+        if (redisAvailable()) {
+            try {
+                redis.key().del(key);
+            } catch (Exception e) {
+                markRedisDown(e);
+            }
+        }
+        memory.del(key);
         return expected != null && expected.equalsIgnoreCase(captchaCode.trim());
     }
 
     // ---------- 登录失败计数 ----------
 
     public int failCount(String username) {
-        String v = strCmd().get(FAIL_KEY_PREFIX + username);
+        String key = FAIL_KEY_PREFIX + username;
+        if (redisAvailable()) {
+            try {
+                String v = strCmd().get(key);
+                return v == null ? 0 : Integer.parseInt(v);
+            } catch (Exception e) {
+                markRedisDown(e);
+            }
+        }
+        String v = memory.get(key);
         if (v == null) return 0;
         try {
             return Integer.parseInt(v);
@@ -112,15 +157,29 @@ public class CaptchaService {
     public void recordFail(String username) {
         if (username == null || username.isBlank()) return;
         String key = FAIL_KEY_PREFIX + username;
-        long n = strCmd().incr(key);
-        if (n == 1) {
-            redis.key().expire(key, FAIL_TTL.toSeconds());
+        memory.increment(key, FAIL_TTL.toSeconds());
+        if (redisAvailable()) {
+            try {
+                long n = strCmd().incr(key);
+                if (n == 1) {
+                    redis.key().expire(key, FAIL_TTL.toSeconds());
+                }
+            } catch (Exception e) {
+                markRedisDown(e);
+            }
         }
     }
 
     public void resetFail(String username) {
         if (username == null || username.isBlank()) return;
-        redis.key().del(FAIL_KEY_PREFIX + username);
+        memory.del(FAIL_KEY_PREFIX + username);
+        if (redisAvailable()) {
+            try {
+                redis.key().del(FAIL_KEY_PREFIX + username);
+            } catch (Exception e) {
+                markRedisDown(e);
+            }
+        }
     }
 
     // ---------- 私有 ----------
@@ -172,6 +231,15 @@ public class CaptchaService {
         }
         sb.append("</svg>");
         return sb.toString();
+    }
+
+    private boolean redisAvailable() {
+        return System.currentTimeMillis() >= redisRetryAt;
+    }
+
+    private void markRedisDown(Exception e) {
+        redisRetryAt = System.currentTimeMillis() + REDIS_RETRY_MS;
+        LOG.warnf(e, "[Captcha] Redis 不可用，%ds 内降级为进程内存储", REDIS_RETRY_MS / 1000);
     }
 
     private int rand(int bound) {
