@@ -64,5 +64,25 @@ export const useTabsStore = defineStore('tabs', () => {
     return AFFIX_TAB.path
   }
 
-  return { tabs, activePath, cachedNames, openTab, closeTab, closeOthers, closeAll }
+  /** 关闭左侧；若激活 tab 被关掉则激活锚点 tab，返回应跳转的路径，否则返回 null */
+  function closeLeft(path: string): string | null {
+    const idx = tabs.value.findIndex((t) => t.path === path)
+    if (idx <= 0) return null
+    const removedActive = tabs.value.slice(0, idx).some((t) => t.path === activePath.value)
+    tabs.value = tabs.value.filter((t, i) => i >= idx || t.affix)
+    if (removedActive) activePath.value = path
+    return removedActive ? path : null
+  }
+
+  /** 关闭右侧；若激活 tab 被关掉则激活锚点 tab，返回应跳转的路径，否则返回 null */
+  function closeRight(path: string): string | null {
+    const idx = tabs.value.findIndex((t) => t.path === path)
+    if (idx < 0 || idx === tabs.value.length - 1) return null
+    const removedActive = tabs.value.slice(idx + 1).some((t) => t.path === activePath.value)
+    tabs.value = tabs.value.filter((t, i) => i <= idx || t.affix)
+    if (removedActive) activePath.value = path
+    return removedActive ? path : null
+  }
+
+  return { tabs, activePath, cachedNames, openTab, closeTab, closeOthers, closeAll, closeLeft, closeRight }
 })

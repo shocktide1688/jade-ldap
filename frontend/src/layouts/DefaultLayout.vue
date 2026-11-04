@@ -182,6 +182,30 @@ function ctxRefresh() { closeCtx(); refreshCurrent() }
 function ctxClose() { if (ctx.value.tab) close(ctx.value.tab.path); closeCtx() }
 function ctxCloseOthers() { if (ctx.value.tab) go(tabsStore.closeOthers(ctx.value.tab.path)); closeCtx() }
 function ctxCloseAll() { go(tabsStore.closeAll()); closeCtx() }
+// 关左/右：激活 tab 被关掉时才需要跳转（closeLeft/Right 返回 null 表示当前激活未受影响）
+function ctxCloseLeft() {
+  if (!ctx.value.tab) return closeCtx()
+  const next = tabsStore.closeLeft(ctx.value.tab.path)
+  if (next) go(next)
+  closeCtx()
+}
+function ctxCloseRight() {
+  if (!ctx.value.tab) return closeCtx()
+  const next = tabsStore.closeRight(ctx.value.tab.path)
+  if (next) go(next)
+  closeCtx()
+}
+// 锚点 tab 左/右是否还有可关闭的 tab（决定菜单项禁用态）
+const ctxHasLeft = computed(() => {
+  if (!ctx.value.tab) return false
+  const idx = tabsStore.tabs.findIndex((t) => t.path === ctx.value.tab!.path)
+  return idx > 0 && tabsStore.tabs.slice(0, idx).some((t) => !t.affix)
+})
+const ctxHasRight = computed(() => {
+  if (!ctx.value.tab) return false
+  const idx = tabsStore.tabs.findIndex((t) => t.path === ctx.value.tab!.path)
+  return idx !== -1 && tabsStore.tabs.slice(idx + 1).some((t) => !t.affix)
+})
 function onGlobalClick() { closeCtx() }
 function closeCtx() { ctx.value.show = false }
 
@@ -361,6 +385,8 @@ onUnmounted(() => {
             <button class="ctx-item" :disabled="ctx.tab?.path !== tabsStore.activePath" @click="ctxRefresh">刷新页面</button>
             <button class="ctx-item" :disabled="!!ctx.tab?.affix" @click="ctxClose">关闭标签</button>
             <button class="ctx-item" @click="ctxCloseOthers">关闭其他</button>
+            <button class="ctx-item" :disabled="!ctxHasLeft" @click="ctxCloseLeft">关闭左侧</button>
+            <button class="ctx-item" :disabled="!ctxHasRight" @click="ctxCloseRight">关闭右侧</button>
             <button class="ctx-item" @click="ctxCloseAll">关闭全部</button>
           </div>
         </teleport>
